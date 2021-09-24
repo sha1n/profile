@@ -51,9 +51,10 @@ $reset_color
 
 function migrate() {
   # listing only non-fork repos
-  repos=($(gh repo list --source | awk -F' ' '{print $1}' | awk -F/ '{print $2}'))
+  repos=($(gh repo list $organization --source | awk -F' ' '{print $1}' | awk -F/ '{print $2}'))
   for repo in "${repos[@]}"; do
     handle_repo "$repo"
+    # echo $repo
   done
 }
 
@@ -76,9 +77,7 @@ $reset_color"
 
   echo "$fg[green]Pushing $repo... $reset_color"
   git remote add "origin" "git@github.com:$organization/$repo.git"
-  git push --force origin $(git branch --show-current) && cd ~/projects && rm -rf "$repo"
-
-  cd ~/projects
+  git push --force origin $(git branch --show-current) && cd "$migdir" && rm -rf "$repo"
 
   echo "$fg[magenta]
 > Done!$reset_color"
