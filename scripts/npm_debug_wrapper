@@ -1,0 +1,21 @@
+#!/usr/bin/env zsh
+
+function run_with_debug_off() {
+  if [[ -z "$DEBUG" ]]; then
+    export DEBUG=
+    local debug_set=true
+  fi
+
+  if [[ -z "$DEBUG_COLORS" ]]; then
+    export DEBUG_COLORS=true
+    local debug_colors_set=true
+  fi
+
+  eval $1 "${@:2}"
+  local rc="$?"
+
+  [[ -z "$debug_set" ]] && unset DEBUG
+  [[ -z "$debug_colors_set" ]] && unset DEBUG_COLORS
+
+  exit $rc
+}

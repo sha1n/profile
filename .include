@@ -1,0 +1,17 @@
+#!/usr/bin/env zsh
+
+autoload -U colors && colors
+local script_dir=${0:a:h}
+
+source $script_dir/.exports
+source $script_dir/.aliases
+source $script_dir/.functions
+
+function init() {
+  mkdir -p "$HOME/.local/bin"
+  mkdir -p "$CODE"
+
+  export PATH="$PATH:$HOME/.local/bin:$script_dir/scripts"
+}
+
+init

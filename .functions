@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+
+function clone() {
+  local org="sha1n"
+  if [[ "$#" == 2 ]]; then
+    org="$1"
+    local repo="$2"
+  elif [[ "$#" == 1 ]]; then
+    local repo="$1"
+  else
+    printf "error: invalid number of arguments: %s
+Usage: 
+
+      clone <repo>
+      clone <org> <repo>\n\n" "$#"
+
+    return 1
+  fi
+
+  echo "$fg[green]git clone git@github.com:$org/$repo.git$reset_color"
+
+  git clone "git@github.com:$org/$repo.git"
+
+  return $?
+}

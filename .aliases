@@ -1,0 +1,34 @@
+#
+# directory shortcuts
+#
+alias home='cd $HOME'
+alias cod='cd $HOME/code'
+alias gos='cd $(go env GOPATH)'
+
+#
+# command shortcuts
+#
+# git
+alias pull_master='git pull --rebase --autostash origin master'
+alias status='git status'
+alias reset='git reset'
+alias add='git add'
+alias commit='git commit'
+alias push='git push origin $(git branch --show-current)'
+alias pull='git pull origin $(git branch --show-current)'
+# gh
+alias pr='gh pr create'
+# make
+alias mt='make test'
+# yarn/npm
+alias yt='yarn run test'
+alias yit='yarn run test:it'
+alias yut='yarn run test:unit'
+alias yb='yarn run build'
+alias yc='yarn run clean'
+alias npl='npm run lint -s'
+# vagrant
+alias vu='vagrant up'
+alias vh='vagrant halt'
+# docker 
+alias dc='docker kill $(docker ps -q) && docker rm -vf $(docker ps -qa)'

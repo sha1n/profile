@@ -1,0 +1,7 @@
+#!/usr/bin/env zsh
+
+local script_dir=${0:a:h}
+
+source $script_dir/npm_debug_wrapper
+
+run_with_debug_off yarn $@
