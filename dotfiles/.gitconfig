@@ -1,0 +1,9 @@
+[pull]
+	rebase = true
+[user]
+	name = sha1n
+	email = sha1n@users.noreply.github.com
+[core]
+	excludesfile = ~/.gitignore_global
+[init]
+	defaultBranch = master
