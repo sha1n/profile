@@ -3,7 +3,7 @@
 #
 alias home='cd $HOME'
 alias cod='cd $HOME/code'
-alias gos='cd $(go env GOPATH)'
+alias gos='cd $(go env GOPATH)/src/github.com/sha1n'
 
 #
 # command shortcuts
