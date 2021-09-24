@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+
+# common output dirs
+bin/
+dist/
+target/
+
+*.log
+
+# VS code
+.vscode/
+.metals/
+
+# Bazel
+.ijwb/
+bazel-*/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+
+.settings
+.project
+.pethrc
+
+# IDEA
+.idea/
+*.iml
+
+# node_modules
+node_modules/
+
+# golang
+vendor/
+
+# vagrant
+.vagrant
+.vm_config.json
