@@ -3,7 +3,7 @@
 autoload -U colors && colors
 
 migdir="$CODE/migration"
-organization="sha1n"
+organization="sha1n-playground"
 
 ################################################################################
 
@@ -51,10 +51,9 @@ $reset_color
 
 function migrate() {
   # listing only non-fork repos
-  repos=($(gh repo list $organization --source | awk -F' ' '{print $1}' | awk -F/ '{print $2}'))
+  repos=($(gh repo list $organization --source | awk -F' ' '{print $1}' | awk -F/ '{print $2}' | sort))
   for repo in "${repos[@]}"; do
     handle_repo "$repo"
-    # echo $repo
   done
 }
 
@@ -79,8 +78,13 @@ $reset_color"
   git remote add "origin" "git@github.com:$organization/$repo.git"
   git push --force origin $(git branch --show-current) && cd "$migdir" && rm -rf "$repo"
 
-  echo "$fg[magenta]
-> Done!$reset_color"
+  if [[ "$?" == "0" ]]; then
+    echo "$fg[magenta]
+> Done!$reset_color"  
+  else 
+    echo "$fg[red]
+>>> FAILED! <<<$reset_color"  
+  fi
 }
 
 validate
