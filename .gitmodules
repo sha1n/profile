@@ -1,0 +1,3 @@
+[submodule "zsh-plugins/path-ethic"]
+	path = zsh-plugins/path-ethic
+	url = git@github.com:sha1n/path-ethic.git
