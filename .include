@@ -1,17 +1,20 @@
 #!/usr/bin/env zsh
 
-autoload -U colors && colors
-local script_dir=${0:a:h}
+SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 
-source $script_dir/.exports
-source $script_dir/.aliases
-source $script_dir/.functions
+autoload -U colors && colors
+
+source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh
+
+source $SHA1N_PROFILE_HOME/.exports
+source $SHA1N_PROFILE_HOME/.aliases
+source $SHA1N_PROFILE_HOME/.functions
 
 function init() {
   mkdir -p "$HOME/.local/bin"
   mkdir -p "$CODE"
 
-  export PATH="$PATH:$HOME/.local/bin:$script_dir/scripts"
+  export PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
 }
 
 init
