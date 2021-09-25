@@ -5,6 +5,11 @@ SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 autoload -U colors && colors
 
 source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh
+source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+# history-substring-search key bindings
+bindkey "^[[A" history-substring-search-up
+bindkey "^[[B" history-substring-search-down
 
 source $SHA1N_PROFILE_HOME/.exports
 source $SHA1N_PROFILE_HOME/.aliases
