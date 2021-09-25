@@ -19,7 +19,6 @@ function validate() {
   if [[ ! -f "$dotzshrc" ]]; then
     warn "the file '$dotzshrc' does not exist. An empty one will be created."
     touch "$dotzshrc"
-    return 1
   fi
 
   local existing_source=$(grep -e '^source .*/\.include' "$dotzshrc")
