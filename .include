@@ -5,20 +5,26 @@ SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 setopt prompt_subst
 
 autoload -U colors && colors
-autoload -U compaudit compinit
 
+fpath=($SHA1N_PROFILE_HOME/zsh-plugins/zsh-completions/src $fpath)
+autoload -U compinit && compinit
+
+# load plugins
 source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh
 source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
-
+# load theme
 source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
 
 # history-substring-search key bindings
 bindkey "^[[A" history-substring-search-up
 bindkey "^[[B" history-substring-search-down
 
+# load shell environment variables
 source $SHA1N_PROFILE_HOME/.exports
+# aload aliases
 source $SHA1N_PROFILE_HOME/.aliases
+# load utility functions
 source $SHA1N_PROFILE_HOME/.functions
 
 function init() {

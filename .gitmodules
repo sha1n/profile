@@ -10,3 +10,6 @@
 [submodule "zsh-theme/agnoster-zsh-theme"]
 	path = zsh-theme/agnoster-zsh-theme
 	url = git@github.com:agnoster/agnoster-zsh-theme.git
+[submodule "zsh-plugins/zsh-completions"]
+	path = zsh-plugins/zsh-completions
+	url = git://github.com/zsh-users/zsh-completions.git
