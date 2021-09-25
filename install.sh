@@ -24,7 +24,7 @@ function validate() {
   local existing_source=$(grep -e '^source .*/\.include' "$dotzsh")
   if [[ ! -z "$existing_source" ]]; then
     error "the following 'source' command is already in your .zshrc profile: $existing_source"
-    exit 1
+    exit 2
   fi
 }
 
