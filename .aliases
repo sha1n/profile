@@ -18,6 +18,7 @@ alias stash='git stash'
 alias push='git push origin $(git branch --show-current)'
 alias pull='git pull origin $(git branch --show-current)'
 alias pullr='git pull --recurse-submodules origin $(git branch --show-current)'
+alias cloner='git clone --recurse-submodules'
 # gh
 alias pr='gh pr create'
 # make
