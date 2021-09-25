@@ -7,3 +7,6 @@
 [submodule "zsh-plugins/zsh-syntax-highlighting"]
 	path = zsh-plugins/zsh-syntax-highlighting
 	url = git@github.com:zsh-users/zsh-syntax-highlighting.git
+[submodule "zsh-theme/agnoster-zsh-theme"]
+	path = zsh-theme/agnoster-zsh-theme
+	url = git@github.com:agnoster/agnoster-zsh-theme.git
