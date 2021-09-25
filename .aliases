@@ -14,8 +14,10 @@ alias status='git status'
 alias reset='git reset'
 alias add='git add'
 alias commit='git commit'
+alias stash='git stash'
 alias push='git push origin $(git branch --show-current)'
 alias pull='git pull origin $(git branch --show-current)'
+alias pullr='git pull --recurse-submodules origin $(git branch --show-current)'
 # gh
 alias pr='gh pr create'
 # make
