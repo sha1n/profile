@@ -4,10 +4,12 @@
 alias home='cd $HOME'
 alias cod='cd $HOME/code'
 alias gos='cd $(go env GOPATH)/src/github.com/sha1n'
-
 #
 # command shortcuts
 #
+# ls
+alias ll='ls -lh'
+alias la='ls -lha'
 # git
 alias pull_master='git pull --rebase --autostash origin master'
 alias status='git status'
