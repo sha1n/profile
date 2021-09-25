@@ -18,13 +18,13 @@ function validate() {
   # We are not going to create .zshrc. If it doesn't exist something is probably off
   if [[ ! -f "$dotzsh" ]]; then
     error "the file '$dotzsh' does not exist"
-    exit 1
+    return 1
   fi
 
   local existing_source=$(grep -e '^source .*/\.include' "$dotzsh")
   if [[ ! -z "$existing_source" ]]; then
     error "the following 'source' command is already in your .zshrc profile: $existing_source"
-    exit 2
+    return 1
   fi
 }
 
@@ -56,6 +56,4 @@ function link_dotfiles() {
 }
 
 link_dotfiles
-validate && install
-
-print "Done!"
+validate && install && print "Done!" || warn "Skipped!"
