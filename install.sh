@@ -13,8 +13,12 @@ function warn() {
   print "$fg[yellow]Warning:$reset_color $1"
 }
 
+function green() {
+  print "$fg[green]$1$reset_color"
+}
+
 function validate() {
-  print "Observing $dotzshrc..."
+  green "Observing $dotzshrc..."
   # We are not going to create .zshrc. If it doesn't exist something is probably off
   if [[ ! -f "$dotzshrc" ]]; then
     warn "the file '$dotzshrc' does not exist. An empty one will be created."
@@ -29,7 +33,7 @@ function validate() {
 }
 
 function install() {
-  print "Installing profile..."
+  green "Installing profile..."
   echo "source '$script_dir/.include'" >>"$dotzshrc"
   if [[ "$?" == "0" ]]; then
     echo "Installed successfully!"
@@ -38,7 +42,7 @@ function install() {
 }
 
 function link_dotfile() {
-  print "Linking $1..."
+  green "Linking $1..."
   if [[ -f "$HOME/$1" ]]; then
     warn "the file '${HOME}/${1}' already exists. Skipping..."
   else
@@ -49,11 +53,11 @@ function link_dotfile() {
 }
 
 function link_dotfiles() {
-  print "Linking dor files..."
+  green "Linking dot files..."
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
     link_dotfile "$file"
   done
 }
 
 link_dotfiles
-validate && install && print "Done!" || warn "Skipped!"
+validate && install && green "Done!" || warn "Skipped!"
