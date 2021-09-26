@@ -6,6 +6,6 @@ bindkey "^[[B" history-substring-search-down
 # line navigation
 bindkey  "^[[H"   beginning-of-line
 bindkey  "^[[F"   end-of-line
-bindkey  "^[[3~"  delete-cha
+bindkey  "^[[3~"  delete-char
 # completion
 bindkey '^I' complete-word
