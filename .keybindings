@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+
+# history-substring-search key bindings
+bindkey "^[[A" history-substring-search-up
+bindkey "^[[B" history-substring-search-down
+# line navigation
+bindkey  "^[[H"   beginning-of-line
+bindkey  "^[[F"   end-of-line
+bindkey  "^[[3~"  delete-cha
+# completion
+bindkey '^I' complete-word
