@@ -3,34 +3,22 @@
 SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 
 setopt prompt_subst
-
 autoload -U colors && colors
 
+# plugins
 fpath=($SHA1N_PROFILE_HOME/zsh-plugins/zsh-completions/src $fpath)
-
-# load plugins
 source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh
 source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
-# load theme
+# theme
 source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
 
-# load shell environment variables
 source $SHA1N_PROFILE_HOME/.exports
-# aload aliases
 source $SHA1N_PROFILE_HOME/.aliases
-# load utility functions
 source $SHA1N_PROFILE_HOME/.functions
-# load key bindings
 source $SHA1N_PROFILE_HOME/.keybindings
-# load completions 
 source $SHA1N_PROFILE_HOME/.completions
 
-function init() {
-  mkdir -p "$HOME/.local/bin"
-  mkdir -p "$CODE"
 
-  export PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
-}
-
-init
+mkdir -p "$HOME/.local/bin"
+mkdir -p "$CODE"
