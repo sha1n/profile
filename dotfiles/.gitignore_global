@@ -24,7 +24,10 @@ venv/
 
 .settings
 .project
+
+# my conventions
 .pethrc
+.start
 
 # IDEA
 .idea/

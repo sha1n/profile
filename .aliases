@@ -4,6 +4,9 @@
 alias home='cd $HOME'
 alias cod='cd $HOME/code'
 alias gos='cd $(go env GOPATH)/src/github.com/sha1n'
+# main task conventions
+alias main='cd -P $HOME/main'
+alias start='./.start'
 #
 # command shortcuts
 #
