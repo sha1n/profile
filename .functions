@@ -1,5 +1,8 @@
 #!/usr/bin/env zsh
 
+SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
+source "$SHA1N_PROFILE_HOME/lib.zsh"
+
 function clone() {
   local org="sha1n"
   if [[ "$#" == 2 ]]; then
@@ -22,4 +25,21 @@ Usage:
   git clone "git@github.com:$org/$repo.git"
 
   return $?
+}
+
+function update_profile() {
+  local caller_dir="$PWD"
+  cd "$SHA1N_PROFILE_HOME"
+
+
+  git pull --recurse-submodules origin $(git branch --show-current)
+  local rc="$?"
+  if [[ "$rc" == "0" ]]; then
+    green "update successful!"
+  else 
+    warn "oh... shit..."
+    info "pull yield code $rc"
+  fi
+
+  cd "$caller_dir"
 }
