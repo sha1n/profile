@@ -30,14 +30,15 @@ alias pr='gh pr create'
 # make
 alias mt='make test'
 # yarn/npm
-alias yt='yarn run test'
-alias yit='yarn run test:it'
-alias yut='yarn run test:unit'
-alias yb='yarn run build'
-alias yc='yarn run clean'
+alias yi='yarn install'
+alias yt='y run test'
+alias yit='y run test:it'
+alias yut='y run test:unit'
+alias yb='y run build'
+alias yc='y run clean'
 alias npl='npm run lint -s'
 # vagrant
 alias vu='vagrant up'
 alias vh='vagrant halt'
 # docker 
-alias dc='docker kill $(docker ps -q) && docker rm -vf $(docker ps -qa)'
+alias dcc='docker kill $(docker ps -q) && docker rm -vf $(docker ps -qa)'
