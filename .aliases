@@ -27,6 +27,10 @@ alias cloner='git clone --recurse-submodules'
 alias gil='git log --pretty=format:"%C(red)%as%C(reset) %C(green)%h%C(reset)%C(auto)%d%C(reset) %s - %C(cyan)[%ce]%C(reset)"'
 # gh
 alias pr='gh pr create'
+alias prs='gh pr list'
+alias myprs='gh pr list -A sha1n'
+alias issues='gh issue list'
+alias releases='gh release list'
 # make
 alias mt='make test'
 # yarn/npm
