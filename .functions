@@ -35,10 +35,10 @@ function update_profile() {
   git pull --recurse-submodules origin $(git branch --show-current)
   local rc="$?"
   if [[ "$rc" == "0" ]]; then
-    green "update successful!"
+    __profile_log_success "update successful!"
   else 
-    warn "oh... shit..."
-    info "pull yield code $rc"
+    __profile_log_warn "oh... shit..."
+    __profile_log_info "pull yield code $rc"
   fi
 
   cd "$caller_dir"
