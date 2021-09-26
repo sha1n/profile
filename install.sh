@@ -1,8 +1,7 @@
 #!/usr/bin/env zsh
 
 SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
-
-source "$SHA1N_PROFILE_HOME/lib.zsh"
+source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 
 local dotzshrc="$HOME/.zshrc"
 local dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"

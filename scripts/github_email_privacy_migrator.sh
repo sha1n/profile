@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 
-autoload -U colors && colors
+SHA1N_PROFILE_SCRIPTS="${${(%):-%x}:a:h}"
+source "$SHA1N_PROFILE_SCRIPTS/lib.zsh"
 
 migdir="$CODE/migration"
 organization="sha1n-playground"
@@ -33,15 +34,15 @@ $reset_color
   echo "\n"
 
   if [[ ! -f "$migdir/.mailmap" ]]; then
-    echo "mailmap file doesn't exist: $migdir/.mailmap"
+    __profile_log_error "mailmap file doesn't exist: $migdir/.mailmap"
     exit 1
   else
-    echo "Using mailmap file:"
+    __profile_log_info "using mailmap file:"
     cat "$migdir/.mailmap"
     echo "\n"
 
     if read -q "REPLY?Is this ok? [Y/n]: "; then
-      echo "\n$fg[green]Proceeding... $reset_color"
+      __profile_log_info "\nproceeding..."
       mkdir -p "$migdir"
     else
       user_quit
@@ -60,30 +61,26 @@ function migrate() {
 function handle_repo() {
   local repo="$1"
 
-  echo "$fg[magenta]
-> Processing repo "$repo"
-$reset_color"
+  __profile_log_info "processing repo $repo"
 
   cd "$migdir"
 
-  echo "$fg[green]Going to migrate $repo... $reset_color"
+  __profile_log_info "going to migrate $repo..."
   git clone "git@github.com:$organization/$repo.git"
 
   cd "$repo"
 
-  echo "$fg[green]Rewriting history... $reset_color"
+  __profile_log_info "rewriting history..."
   git filter-repo --mailmap "$migdir/.mailmap"
 
-  echo "$fg[green]Pushing $repo... $reset_color"
+  __profile_log_info "pushing $repo..."
   git remote add "origin" "git@github.com:$organization/$repo.git"
   git push --force origin $(git branch --show-current) && cd "$migdir" && rm -rf "$repo"
 
   if [[ "$?" == "0" ]]; then
-    echo "$fg[magenta]
-> Done!$reset_color"  
+    __profile_log_success "done!"
   else 
-    echo "$fg[red]
->>> FAILED! <<<$reset_color"  
+    __profile_log_error ">>> FAILED! <<<"
   fi
 }
 
