@@ -24,7 +24,7 @@ function validate() {
 
 function install() {
   __profile_log_info "installing profile..."
-  echo "source '$script_dir/.include'" >>"$dotzshrc"
+  echo "source '$SHA1N_PROFILE_HOME/.include'" >>"$dotzshrc"
   if [[ "$?" == "0" ]]; then
     __profile_log_info "installed successfully!"
     __profile_log_info "to verify installation start new session or source $dotzshrc"
