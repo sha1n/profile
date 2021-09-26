@@ -1,0 +1,2 @@
+git config --local user.name sha1n
+git config --local user.email sha1n@users.noreply.github.com
