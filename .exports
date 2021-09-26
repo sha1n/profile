@@ -5,4 +5,8 @@ export GO111MODULE=on
 
 # enable ls colors
 export CLICOLOR=1
-#export LSCOLORS=GxFxCxDxBxegedabagaced
+# ls
+export LSCOLORS=GxFxCxDxBxegedabagaced
+# grep
+export GREP_OPTIONS='--color=always'
+export GREP_COLOR='1;35;40'
