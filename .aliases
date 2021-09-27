@@ -13,6 +13,8 @@ alias start='./.start'
 #
 # command shortcuts
 #
+#
+alias grep='grep --color=always'
 # ls
 alias ll='ls -lh'
 alias la='ls -lha'
