@@ -13,3 +13,6 @@
 [submodule "zsh-plugins/zsh-completions"]
 	path = zsh-plugins/zsh-completions
 	url = git://github.com/zsh-users/zsh-completions.git
+[submodule "tests/zsh-scriptest"]
+	path = tests/zsh-scriptest
+	url = git@github.com:sha1n/zsh-scriptest.git
