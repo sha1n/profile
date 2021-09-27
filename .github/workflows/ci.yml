@@ -28,7 +28,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install zsh
 
-      - name: Zsh Vesion
+      - name: Zsh Version
         run: zsh --version
 
       - name: Update Submodules
