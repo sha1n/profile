@@ -27,7 +27,7 @@ shell environment.
 
 ```bash
 git clone git@github.com:sha1n/profile.git
-git submodule update --init
+git -C profile submodule update --init
 
 profile/install.sh
 ```
