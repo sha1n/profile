@@ -1,0 +1,38 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - "docs/**"
+
+jobs:
+  main:
+    name: Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Zsh
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install zsh
+
+      - name: Zsh Vesion
+        run: zsh --version
+
+      - name: Update Submodules
+        run: make update_submodules
+
+      - name: Run Tests
+        run: make test
