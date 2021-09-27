@@ -53,11 +53,11 @@ I've been using Oh-My-Zsh happily for many years and I could continue using it f
 3. Given 1 & 2, I realized that I can easily build something that does what I need and even takes me a step further, so that I don't have to make any manual adjustments after I install it
 4. Finally, I use this a lot to configure dev VM boxes, so it saves me a lot of time
 
-I still love, appreciate and recommend [Oh-My-Zsh](https://ohmyz.sh/) to most people. I haven't tried [Zim](https://zimfw.sh/) yet, but it definitely looks good. So if you are not into fiddling with that kind of configuration be sure to check them our if you haven't done so yet.
+With all that said, I still love, appreciate and recommend [Oh-My-Zsh](https://ohmyz.sh/) to most people. I haven't tried [Zim](https://zimfw.sh/) yet, but it definitely looks good. So if you are not into fiddling with that kind of configuration be sure to check them out if you haven't done so yet.
 
 # Can I Use This Repository to Configure My Own Zsh?
-You can, but you probably want to make quite a few adjustments to make it your own.
-I would recommend to fork the repo and review the configuration. 
+You can, but you probably want to make some adjustments to make it your own.
+I would recommend to fork the repo and review the configuration, although it is very easy to make adjustments evern after installing, because it's all very very simple and magic free.
 
 Pay extra attention to:
 - [dotfiles/.gitconfig](dotfiles/.gitconfig)
@@ -65,4 +65,4 @@ Pay extra attention to:
 - [.aliases](.aliases)
 
 # Does it Work with Bash and Other Shells Too?
-No, it is designed to only with Zsh (tested on `zsh 5.7.1 (x86_64-apple-darwin19.0)`).
+No, it is designed to work only with Zsh (tested extensively on `zsh 5.7.1`).
