@@ -1,7 +1,7 @@
 BASEDIR := $(shell pwd)
 
 test:
-	@-$(BASEDIR)/tests/zsh-scriptest/run_tests.sh $(BASEDIR)/tests
+	@-$(BASEDIR)/tests/run_tests.sh
 
 update_submodules:
 	@git submodule update --recursive --remote

@@ -48,5 +48,8 @@ function link_dotfiles() {
   done
 }
 
+# get all submodules' latest code
+git submodule update --recursive --remote
+
 link_dotfiles
 validate && install && __profile_log_success "done!" || __profile_log_warn "skipped!"
