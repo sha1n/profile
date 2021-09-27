@@ -1,3 +1,5 @@
+[![CI](https://github.com/sha1n/profile/actions/workflows/ci.yml/badge.svg)](https://github.com/sha1n/profile/actions/workflows/ci.yml)
+
 # Profile
 
 ```bash
