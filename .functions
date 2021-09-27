@@ -1,4 +1,4 @@
 #!/usr/bin/env zsh
 
-source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
+#source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 
