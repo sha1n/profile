@@ -48,8 +48,14 @@ function link_dotfiles() {
   done
 }
 
-# get all submodules' latest code
-git submodule update --recursive --remote
+function update_submodules() {
+  __profile_log_info "updating submodules..."
+  
+  git submodule update --recursive --remote
+  return "$?"
+}
 
+
+update_submodules && __profile_log_success "submodules updated successfully" || __profile_log_warn "failed to update submodules!"
 link_dotfiles
 validate && install && __profile_log_success "done!" || __profile_log_warn "skipped!"
