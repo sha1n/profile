@@ -20,7 +20,7 @@ set foldenable
 set tabstop=2
 " tab size for editing
 set softtabstop=2
-" use spaces to represent tabs
-set expandtab
+" use spaces to represent tabs <-- bad for Makefile
+" set expandtab
 
 set autoindent
