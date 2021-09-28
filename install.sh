@@ -51,7 +51,7 @@ function link_dotfiles() {
 function update_submodules() {
   __profile_log_info "updating submodules..."
   
-  git submodule update --recursive --remote
+  git submodule update --init
   return "$?"
 }
 
