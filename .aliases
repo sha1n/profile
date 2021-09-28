@@ -53,3 +53,6 @@ alias vh='vagrant halt'
 # docker 
 alias dcc='docker kill $(docker ps -q) && docker rm -vf $(docker ps -qa)'
 alias dvm='source dvm.sh'
+# bazel
+alias bazel='bazel_with_disk_cache_guard'
+alias bazel_rm='sudo rm -rf ~/.cache/bazel'
