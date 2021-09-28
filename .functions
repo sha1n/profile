@@ -1,4 +1,16 @@
 #!/usr/bin/env zsh
 
-#source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
+source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 
+# runs mtime based cleanup on the bazel disk-cache directory.
+function bazel_with_disk_cache_guard() {
+  ("$BAZEL_BIN_PATH" "$@")
+  local rc="$?"
+
+  (find "$BAZEL_DISK_CACHE_DIR" -type f -mtime +$BAZEL_DISK_CACHE_MAX_AGE -delete &)
+  if [[ "$?" != "0" ]]; then
+    __profile_log_warn "[${funcstack[1]}] disk cache cleanup failed"
+  fi
+
+  return "$rc"
+}

@@ -1,0 +1,17 @@
+startup --shutdown_on_low_sys_mem
+startup --output_user_root=~/.cache/bazel/outputs
+
+common --ui_event_filters=-DEBUG
+common --ui_actions_shown=48
+common --show_timestamps
+
+build --incompatible_strict_action_env
+build --disk_cache=~/.cache/bazel/disk_cache
+build --worker_verbose=true
+build --test_runner_fail_fast
+test --test_output=all
+test --build_tests_only
+
+test:flaky --flaky_test_attempts=5
+test:flaky --runs_per_test_detects_flakes=true
+test:flaky --nocache_test_results
