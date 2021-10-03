@@ -5,6 +5,10 @@ SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 setopt prompt_subst
 autoload -U colors && colors
 
+# export locale vars
+export LANG="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+
 # plugins
 fpath=($SHA1N_PROFILE_HOME/zsh-plugins/zsh-completions/src $fpath)
 source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh

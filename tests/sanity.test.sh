@@ -12,6 +12,13 @@ function test_source() {
   assert_not_empty "$SHA1N_PROFILE_HOME"
 }
 
+function test_locale_set() {
+  test_case_title
+
+  assert_contains "$LANG" "en_US.UTF-8"
+  assert_contains "$LC_CTYPE" "en_US.UTF-8"
+}
+
 function test_env_vars() {
   test_case_title
 
@@ -34,6 +41,7 @@ function test_dir_path_elements() {
 }
 
 test_source
+test_locale_set
 test_env_vars
 test_dir_layout
 test_dir_path_elements
