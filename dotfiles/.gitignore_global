@@ -27,6 +27,7 @@ venv/
 
 # my conventions
 .pethrc
+.bertconfig
 .start
 
 # IDEA
