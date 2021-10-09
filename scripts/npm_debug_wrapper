@@ -2,7 +2,7 @@
 
 function run_with_debug_off() {
   if [[ -z "$DEBUG" ]]; then
-    export DEBUG="*:error:*"
+    export DEBUG="*error:*"
     local debug_set=true
   fi
 
