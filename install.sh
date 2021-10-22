@@ -2,11 +2,13 @@
 
 SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
+source "$SHA1N_PROFILE_HOME/.exports"
 
-local dotzshrc="$HOME/.zshrc"
-local dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
+dotzshrc="$HOME/.zshrc"
+dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
+dirs=("$HOME/.local/bin" "$CODE")
 
-function validate() {
+function validate_shell_rc_file() {
   __profile_log_info "Observing $dotzshrc..."
   # We are not going to create .zshrc. If it doesn't exist something is probably off
   if [[ ! -f "$dotzshrc" ]]; then
@@ -16,12 +18,12 @@ function validate() {
 
   local existing_source=$(grep -e '^source .*/\.include' "$dotzshrc")
   if [[ ! -z "$existing_source" ]]; then
-    __profile_log_error "the following 'source' command is already in your .zshrc profile: $existing_source"
+    __profile_log_warn "the following 'source' command is already in your .zshrc profile: $existing_source"
     return 1
   fi
 }
 
-function install() {
+function install_source_command() {
   __profile_log_info "installing profile..."
   echo "source '$SHA1N_PROFILE_HOME/.include'" >>"$dotzshrc"
   if [[ "$?" == "0" ]]; then
@@ -31,20 +33,38 @@ function install() {
 }
 
 function link_dotfile() {
-  __profile_log_info "linking $1..."
   if [[ -f "$HOME/$1" ]]; then
     __profile_log_warn "the file '${HOME}/${1}' already exists. Skipping..."
   else
+    __profile_log_info "linking $1..."
     ln -s "$dotfiles_dir/$1" "$HOME/$1"
     return "$?"
   fi
-
 }
 
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
+  
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
-    link_dotfile "$file" && __profile_log_success "done!" || __profile_log_warn "skipped!"
+    link_dotfile "$file" || __pe_log_error "failed to link '$file'!"
+  done
+}
+
+function create_directory() {
+  if [[ -d "$1" ]]; then
+    __profile_log_warn "the directory '$1' already exists. Skipping..."
+  else
+    __profile_log_info "creating directory $1..."
+    mkdir -p "$1"
+    return "$?"
+  fi
+}
+
+function create_directories() {
+  __profile_log_info "creating directories..."
+
+  for dir in "${dirs[@]}"; do 
+    create_directory "$dir" || __pe_log_error "failed to create '$dir'!"
   done
 }
 
@@ -57,5 +77,11 @@ function update_submodules() {
 
 
 update_submodules && __profile_log_success "submodules updated successfully" || __profile_log_warn "failed to update submodules!"
+
 link_dotfiles
-validate && install && __profile_log_success "done!" || __profile_log_warn "skipped!"
+
+create_directories 
+
+validate_shell_rc_file && install_source_command 
+
+__profile_log_info "done!"

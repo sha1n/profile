@@ -22,7 +22,3 @@ source $SHA1N_PROFILE_HOME/.aliases
 source $SHA1N_PROFILE_HOME/.functions
 source $SHA1N_PROFILE_HOME/.keybindings
 source $SHA1N_PROFILE_HOME/.completions
-
-
-mkdir -p "$HOME/.local/bin"
-mkdir -p "$CODE"
