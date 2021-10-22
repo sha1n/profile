@@ -2,7 +2,28 @@
 
 source "$__ZSH_SCRIPTEST_HOME/matchers.sh"
 source "$__ZSH_SCRIPTEST_HOME/test_util.sh"
+fingerprint=$(cat /dev/urandom | base64 | tr -dc '0-9a-zA-Z' | head -c50)
 
+install_profile() {
+  if [[ "$(ls -A $HOME)" ]]; then
+    echo "the test $$HOME directory is expected to be a temporary empty directory"
+    exit 1
+  else
+    test_setup_title
+    touch "$HOME/$fingerprint"
+    # install profile in the test sandbox HOME directory
+    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
+  fi
+}
+
+cleanup() {
+  test_teardown_title
+  assert_file_exists "$HOME/$fingerprint"
+  if [[ -f "$HOME/$fingerprint" ]]; then
+    echo 
+    rm -rf "$HOME"
+  fi 
+}
 
 function test_source() {
   test_case_title
@@ -40,8 +61,10 @@ function test_dir_path_elements() {
   assert_contains "$PATH" "$SHA1N_PROFILE_HOME/scripts"
 }
 
+install_profile
 test_source
 test_locale_set
 test_env_vars
 test_dir_layout
 test_dir_path_elements
+cleanup
