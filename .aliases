@@ -6,6 +6,7 @@ alias update_profile="git -C $SHA1N_PROFILE_HOME pull --recurse-submodules origi
 #
 alias home='cd $HOME'
 alias cod='cd $HOME/code'
+alias codw='cd $HOME/code/w'
 alias gos='cd $(go env GOPATH)/src/github.com/sha1n'
 # main task conventions
 alias main='cd -P $HOME/main'
