@@ -36,3 +36,27 @@ function start() {
 
   cd "$dir"
 }
+
+#
+# searches for the nearest jest and executes it in the current directory.
+#
+function jest() {
+  local pwd="$PWD"
+  local dir="$PWD"
+  while [[ ! -f "node_modules/jest/bin/jest.js" ]]
+  do 
+    if [[ "$PWD" == "/" ]]; then 
+      break
+    fi
+    dir="$dir/.."
+    cd ..
+  done
+
+  if [[ -f "node_modules/jest/bin/jest.js" ]]; then 
+    cd "$pwd"
+    node "$dir/node_modules/jest/bin/jest.js"
+  else
+    cd "$pwd"
+    __profile_log_error "couldn't find jest in the current directory tree"
+  fi
+}
