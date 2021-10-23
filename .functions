@@ -14,3 +14,25 @@ function bazel_with_disk_cache_guard() {
 
   return "$rc"
 }
+
+#
+# searches the current path for a '.start' file and sources it if found. Otherwise prints an error.
+#
+function start() {
+  local dir="$PWD"
+  while [[ ! -f "./.start" ]]
+  do 
+    if [[ "$PWD" == "/" ]]; then 
+      break
+    fi
+    cd ..
+  done
+
+  if [[ -f "./.start" ]]; then 
+    source "./.start"
+  else
+    __profile_log_error "no '.start' file could be found in the current directory tree"
+  fi
+
+  cd "$dir"
+}
