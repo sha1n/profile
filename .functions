@@ -2,7 +2,10 @@
 
 source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 
-# runs mtime based cleanup on the bazel disk-cache directory.
+#
+# Executes 'bazel' with the specified arguments and runs an async mtime based cleanup command on the
+# bazel disk-cache directory when the command exists.
+#
 function bazel_with_disk_cache_guard() {
   ("$BAZEL_BIN_PATH" "$@")
   local rc="$?"
@@ -16,40 +19,24 @@ function bazel_with_disk_cache_guard() {
 }
 
 #
-# searches the current path for a '.start' file and sources it if found. Otherwise prints an error.
+# Searches the current directory path for a '.start' file and sources it if found. Otherwise prints an error.
 #
 function start() {
-  local dir="$PWD"
-  while [[ ! -f "$dir/.start" ]]
-  do 
-    if [[ "$(realpath $dir)" == "/" ]]; then 
-      break
-    fi
-    dir="$dir/.."
-  done
-
-  if [[ -f "./.start" ]]; then 
-    source "$dir/.start"
+  local start_path=$(__profile_search_ancestor_tree ".start")
+  if [[ "$start_path" != "" ]]; then
+    source "$start_path"
   else
     __profile_log_error "no '.start' file could be found in the current directory tree"
   fi
 }
 
 #
-# searches for the nearest jest and executes it in the current directory.
+# Searches for the nearest jest and executes it in the current directory.
 #
 function jest() {
-  local dir="$PWD"
-  while [[ ! -f "$dir/node_modules/jest/bin/jest.js" ]]
-  do 
-    if [[ "$(realpath $dir)" == "/" ]]; then 
-      break
-    fi
-    dir="$dir/.."
-  done
-
-  if [[ -f "$dir/node_modules/jest/bin/jest.js" ]]; then 
-    node "$dir/node_modules/jest/bin/jest.js" "$@"
+  local jest_path=$(__profile_search_ancestor_tree "node_modules/jest/bin/jest.js")
+  if [[ "$jest_path" != "" ]]; then
+    node "$jest_path" "$@"
   else
     __profile_log_error "couldn't find jest in the current directory tree"
   fi
