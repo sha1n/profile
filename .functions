@@ -20,43 +20,37 @@ function bazel_with_disk_cache_guard() {
 #
 function start() {
   local dir="$PWD"
-  while [[ ! -f "./.start" ]]
+  while [[ ! -f "$dir/.start" ]]
   do 
-    if [[ "$PWD" == "/" ]]; then 
+    if [[ "$(realpath $dir)" == "/" ]]; then 
       break
     fi
-    cd ..
+    dir="$dir/.."
   done
 
   if [[ -f "./.start" ]]; then 
-    source "./.start"
+    source "$dir/.start"
   else
     __profile_log_error "no '.start' file could be found in the current directory tree"
   fi
-
-  cd "$dir"
 }
 
 #
 # searches for the nearest jest and executes it in the current directory.
 #
 function jest() {
-  local pwd="$PWD"
   local dir="$PWD"
-  while [[ ! -f "node_modules/jest/bin/jest.js" ]]
+  while [[ ! -f "$dir/node_modules/jest/bin/jest.js" ]]
   do 
-    if [[ "$PWD" == "/" ]]; then 
+    if [[ "$(realpath $dir)" == "/" ]]; then 
       break
     fi
     dir="$dir/.."
-    cd ..
   done
 
-  if [[ -f "node_modules/jest/bin/jest.js" ]]; then 
-    cd "$pwd"
+  if [[ -f "$dir/node_modules/jest/bin/jest.js" ]]; then 
     node "$dir/node_modules/jest/bin/jest.js" "$@"
   else
-    cd "$pwd"
     __profile_log_error "couldn't find jest in the current directory tree"
   fi
 }
