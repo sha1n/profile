@@ -20,3 +20,22 @@ function __profile_log_success() {
 function __profile_log_log() {
   printf "$fg[$1]%s:$reset_color %s\n" "$2" "$3"
 }
+
+#
+# Searches the current directory ancestors tree for the specified file.
+# If found, returns the file path relative to the current directory, otherwise returns nothing.
+#
+function __profile_search_ancestor_tree() {
+  local file_name="$1"
+  local dir="$PWD"
+  while [[ ! -f "$dir/$file_name" ]]; do
+    if [[ "$(realpath $dir)" == "/" ]]; then
+      break
+    fi
+    dir="$dir/.."
+  done
+
+  if [[ -f "$dir/$file_name" ]]; then
+    echo "$dir/$file_name"
+  fi
+}
