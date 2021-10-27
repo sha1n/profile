@@ -46,7 +46,7 @@ alias yit='y run test:it'
 alias yut='y run test:unit'
 alias yb='y run build'
 alias yc='y run clean'
-alias npl='npm run lint -s'
+alias yl='yarn run lint'
 # vagrant
 alias vu='vagrant up'
 alias vh='vagrant halt'
