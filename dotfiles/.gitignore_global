@@ -11,6 +11,7 @@ target/
 # VS code
 .vscode/
 .metals/
+*.code-workspace
 
 # Bazel
 .ijwb/
