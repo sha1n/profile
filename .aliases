@@ -30,6 +30,7 @@ alias pull='git pull --autostash origin $(git branch --show-current)'
 alias push='git push origin $(git branch --show-current)'
 alias gil='git log --pretty=format:"%C(red)%as%C(reset) %C(green)%h%C(reset)%C(auto)%d%C(reset) %s - %C(cyan)[%ce]%C(reset)"'
 alias pullmr='git pull --recurse-submodules origin master'
+alias gc_branches='git branch | grep -v master | xargs git branch -D'
 # gh
 alias pr='gh pr create'
 alias prs='gh pr list'
@@ -47,6 +48,7 @@ alias yut='y run test:unit'
 alias yb='y run build'
 alias yc='y run clean'
 alias yl='yarn run lint'
+alias rm_node_modules='find . -type d -name node_modules -exec rm -rf {} +'
 # vagrant
 alias vu='vagrant up'
 alias vh='vagrant halt'
@@ -58,3 +60,5 @@ alias bazel='bazel_with_disk_cache_guard'
 alias bazel_rm='sudo rm -rf ~/.cache/bazel'
 # mysql
 alias mysqld8='docker run -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8'
+# utilities
+alias uuid="uuidgen |  awk '{print tolower(\$0)}'"
