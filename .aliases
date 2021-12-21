@@ -62,3 +62,4 @@ alias bazel_rm='sudo rm -rf ~/.cache/bazel'
 alias mysqld8='docker run -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8'
 # utilities
 alias uuid="uuidgen |  awk '{print tolower(\$0)}'"
+alias history='history 1'
