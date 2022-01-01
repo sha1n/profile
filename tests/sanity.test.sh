@@ -20,15 +20,15 @@ cleanup() {
   test_teardown_title
   assert_file_exists "$HOME/$fingerprint"
   if [[ -f "$HOME/$fingerprint" ]]; then
-    echo 
+    echo
     rm -rf "$HOME"
-  fi 
+  fi
 }
 
 function test_source() {
   test_case_title
 
-  source "$SHA1N_PROFILE_TESTS_HOME/../.include"
+  source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
 
   assert_not_empty "$SHA1N_PROFILE_HOME"
 }

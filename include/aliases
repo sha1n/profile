@@ -1,3 +1,5 @@
+#!/usr/bin/env zsh
+
 # profile self update
 alias update_profile="git -C $SHA1N_PROFILE_HOME pull --recurse-submodules origin $(git -C $SHA1N_PROFILE_HOME branch --show-current)"
 

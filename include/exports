@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 
 export CODE="$HOME/code"
 export NVM_DIR="$HOME/.nvm"
@@ -13,7 +14,7 @@ export GREP_COLOR='1;35;40'
 PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
 
 #
-# bazel disk cache wrapper config (see: .functions)
+# bazel disk cache wrapper config (see: ./functions)
 #
 # syned with dotfiles/.bazelrc
 export BAZEL_BIN_PATH="$HOME/.local/bin/bazel"
