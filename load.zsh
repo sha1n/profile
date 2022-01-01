@@ -17,9 +17,9 @@ source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-
 # theme
 source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
 
-source $SHA1N_PROFILE_HOME/.exports
-source $SHA1N_PROFILE_HOME/.aliases
-source $SHA1N_PROFILE_HOME/.functions
-source $SHA1N_PROFILE_HOME/.keybindings
-source $SHA1N_PROFILE_HOME/.completions
-source $SHA1N_PROFILE_HOME/.history
+source $SHA1N_PROFILE_HOME/include/exports
+source $SHA1N_PROFILE_HOME/include/aliases
+source $SHA1N_PROFILE_HOME/include/functions
+source $SHA1N_PROFILE_HOME/include/keybindings
+source $SHA1N_PROFILE_HOME/include/completions
+source $SHA1N_PROFILE_HOME/include/history

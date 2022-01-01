@@ -2,7 +2,7 @@
 
 SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
-source "$SHA1N_PROFILE_HOME/.exports"
+source "$SHA1N_PROFILE_HOME/include/exports"
 
 dotzshrc="$HOME/.zshrc"
 dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
@@ -16,7 +16,7 @@ function validate_shell_rc_file() {
     touch "$dotzshrc"
   fi
 
-  local existing_source=$(grep -e '^source .*/\.include' "$dotzshrc")
+  local existing_source=$(grep -e '^source .*/\load.zsh' "$dotzshrc")
   if [[ ! -z "$existing_source" ]]; then
     __profile_log_warn "the following 'source' command is already in your .zshrc profile: $existing_source"
     return 1
@@ -25,7 +25,7 @@ function validate_shell_rc_file() {
 
 function install_source_command() {
   __profile_log_info "installing profile..."
-  echo "source '$SHA1N_PROFILE_HOME/.include'" >>"$dotzshrc"
+  echo "source '$SHA1N_PROFILE_HOME/load.zsh'" >>"$dotzshrc"
   if [[ "$?" == "0" ]]; then
     __profile_log_info "installed successfully!"
     __profile_log_info "to verify installation start new session or source $dotzshrc"

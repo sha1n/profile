@@ -35,9 +35,9 @@ profile/install.sh
 The installation script does two things:
 1. Creates links for each file in the `dotfiles` directory in the user's home directory. This takes care of `.vimrc` , `.gitconfig` and others.
    - If a dot file with the same name already exists, skips
-2. `source` the `.include` file from `~/.zshrc`. 
+2. `source` the `load.zsh` file from `~/.zshrc`. 
    - If the file doesn't exist, it creates it
-   - If `~/.zshrc` exists and a file named `.include` is already sourced from it, aborts
+   - If `~/.zshrc` exists and a file named `load.zsh` is already sourced from it, aborts
 
 
 # Update
