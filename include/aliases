@@ -50,6 +50,7 @@ alias yut='y run test:unit'
 alias yb='y run build'
 alias yc='y run clean'
 alias yl='yarn run lint'
+alias yr='yc && yi && yb && yt'
 alias rm_node_modules='find . -type d -name node_modules -exec rm -rf {} +'
 # vagrant
 alias vu='vagrant up'
