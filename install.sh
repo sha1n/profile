@@ -6,7 +6,7 @@ source "$SHA1N_PROFILE_HOME/include/exports"
 
 dotzshrc="$HOME/.zshrc"
 dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
-dirs=("$HOME/.local/bin" "$CODE/w")
+dirs=("$HOME/.local/bin" "$CODE/p")
 
 function validate_shell_rc_file() {
   __profile_log_info "Observing $dotzshrc..."

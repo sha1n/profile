@@ -12,5 +12,5 @@
 [init]
 	defaultBranch = master
 
-[includeIf "gitdir:~/code/w/"]
-  path = ~/.gitconfig_w
+[includeIf "gitdir:~/code/p/"]
+  path = ~/.gitconfig_p
