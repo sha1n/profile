@@ -2,7 +2,7 @@
 
 # profile self update
 alias update_profile="git -C $SHA1N_PROFILE_HOME pull --recurse-submodules origin $(git -C $SHA1N_PROFILE_HOME branch --show-current)"
-
+alias reload!='source $HOME/.zshrc'
 #
 # directory shortcuts
 #
@@ -40,6 +40,13 @@ alias myprs='gh pr list -A sha1n'
 alias issues='gh issue list'
 alias releases='gh release list'
 alias clone='gh repo clone'
+# glab
+alias gpr='glab mr create'
+alias gprs='glab mr list'
+alias gmyprs='glab mr list --author sha1n'
+alias gissues='glab issue list'
+alias greleases='glab release list'
+alias gclone='glab repo clone'
 # make
 alias mt='make test'
 # yarn/npm
