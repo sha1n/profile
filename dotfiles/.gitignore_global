@@ -26,11 +26,6 @@ venv/
 .settings
 .project
 
-# my conventions
-.pethrc
-.bertconfig
-.start
-
 # IDEA
 .idea/
 *.iml
@@ -45,3 +40,10 @@ vendor/
 # vagrant
 .vagrant
 .vm_config.json
+
+# my conventions
+.pethrc
+.bertconfig
+.start
+.test-env
+
