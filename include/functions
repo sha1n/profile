@@ -2,6 +2,15 @@
 
 source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 
+
+function toupper() {
+  echo "$1" | tr a-z A-Z
+}
+
+function tolower() {
+  echo "$1" | tr A-Z a-z
+}
+
 #
 # Executes 'bazel' with the specified arguments and runs an async mtime based cleanup command on the
 # bazel disk-cache directory when the command exists.
