@@ -16,3 +16,6 @@
 [submodule "tests/zsh-scriptest"]
 	path = tests/zsh-scriptest
 	url = git@github.com:sha1n/zsh-scriptest.git
+[submodule "zsh-plugins/zsh-autosuggestions"]
+	path = zsh-plugins/zsh-autosuggestions
+	url = git@github.com:zsh-users/zsh-autosuggestions.git
