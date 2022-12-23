@@ -12,6 +12,24 @@ function tolower() {
 }
 
 #
+# Adds the provided alias to the last command
+# FIXME shai: escape double/single quotes or use function instead of alias?
+#
+function alias_last() {
+  local last_command=$(echo "${history[@][1]}" | xargs)
+  local alias=$(echo "$1" | xargs)
+
+  echo "Adding: alias '${alias}=${last_command}' to '$SHA1N_PROFILE_HOME/include/aliases'"
+  echo "# Added by function 'alias_last'" >> "$SHA1N_PROFILE_HOME/include/aliases"
+  echo "alias ${alias}='${last_command}'" >> "$SHA1N_PROFILE_HOME/include/aliases"
+
+  echo "Reloading profile..."
+  source "$HOME/.zshrc"
+
+  echo "Alright..."
+}
+
+#
 # Executes 'bazel' with the specified arguments and runs an async mtime based cleanup command on the
 # bazel disk-cache directory when the command exists.
 #
