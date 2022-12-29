@@ -1,12 +1,14 @@
+set nocompatible
+set termguicolors
 set background=dark
-colorscheme industry
+colorscheme solarized
 
 syntax enable
 
 " show line numbers
-" set number
+@REM set number
 " highlight cursor line
-set cursorline
+@REM set cursorline
 
 " searchi
 " search as you type
@@ -24,3 +26,4 @@ set softtabstop=2
 " set expandtab
 
 set autoindent
+set autoread
