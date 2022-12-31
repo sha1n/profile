@@ -8,31 +8,30 @@ alias reload!='source $HOME/.zshrc'
 #
 alias home='cd $HOME'
 alias cod='cd $HOME/code'
-alias codw='cd $HOME/code/w'
+alias cow='cd $HOME/code/w'
 alias gos='cd $(go env GOPATH)/src/github.com/sha1n'
 # main task conventions
 alias main='cd -P $HOME/main'
 #
 # command shortcuts
 #
-#
 alias grep='grep --color=always'
 # ls
 alias ll='ls -lh'
 alias la='ls -lha'
 # git
-alias pull_master='git pull --rebase --autostash origin master'
 alias status='git status'
 alias reset='git reset'
 alias add='git add'
 alias commit='git commit'
 alias stash='git stash'
 alias pop='git stash pop'
-alias pull='git pull --autostash origin $(git branch --show-current)'
-alias push='git push origin $(git branch --show-current)'
 alias gil='git log --pretty=format:"%C(red)%as%C(reset) %C(green)%h%C(reset)%C(auto)%d%C(reset) %s - %C(cyan)[%ce]%C(reset)"'
+alias pull='git pull --autostash origin $(git branch --show-current)'
+alias pull_master='git pull --rebase --autostash origin master'
 alias pullmr='git pull --recurse-submodules origin master'
-alias gc_branches='git branch | grep -v master | xargs git branch -D'
+alias push='git push origin $(git branch --show-current)'
+alias gc_branches='git branch | grep -v $(git branch --show-current) | xargs git branch -D'
 # gh
 alias pr='gh pr create'
 alias prs='gh pr list'
@@ -40,7 +39,7 @@ alias myprs='gh pr list -A sha1n'
 alias issues='gh issue list'
 alias releases='gh release list'
 alias clone='gh repo clone'
-alias='gh repo view -w'
+alias rview='gh repo view -w'
 # glab
 alias gpr='glab mr create'
 alias gprs='glab mr list'
@@ -48,7 +47,7 @@ alias gmyprs='glab mr list --author sha1n'
 alias gissues='glab issue list'
 alias greleases='glab release list'
 alias gclone='glab repo clone'
-alias gbrowse='glab repo view -w'
+alias grview='glab repo view -w'
 # make
 alias mt='make test'
 # yarn/npm
@@ -70,8 +69,7 @@ alias dvm='source dvm.sh'
 # bazel
 alias bazel='bazel_with_disk_cache_guard'
 alias bazel_rm='sudo rm -rf ~/.cache/bazel'
-# mysql
-#alias mysqld8='docker run -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8'
+# dockerized mysql
 alias mysqld8=docker run -v "$HOME/mysql_mount/":/var/lib/mymysql -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8 --secure-file-priv=''
 # utilities
 alias uuid="uuidgen |  awk '{print tolower(\$0)}'"
