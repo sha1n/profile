@@ -82,3 +82,14 @@ function prompt_end() {
   print -n "\n❯%{%f%}"
   CURRENT_BG=''
 }
+
+#
+# Maven single test runner utility
+#
+function mvnt() {
+  if [[ "$1" != "" ]]; then
+    zsh -c "mvn test -Dtest=$(basename $(fzf -e -1 -q $1))"
+  else 
+    zsh -c "mvn test -Dtest=$(basename $(fzf -e))"
+  fi
+}
