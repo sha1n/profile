@@ -93,3 +93,14 @@ function mvnt() {
     zsh -c "mvn test -Dtest=$(basename $(fzf -e))"
   fi
 }
+
+#
+# Pytest single test runner utility
+#
+function pytestt() {
+  if [[ "$1" != "" ]]; then
+    zsh -c "pytest -s -v $(fzf -e -1 -q $1)"
+  else 
+    zsh -c "pytest -s -v $(fzf -e)"
+  fi
+}
