@@ -88,9 +88,9 @@ function prompt_end() {
 #
 function mvnt() {
   if [[ "$1" != "" ]]; then
-    zsh -c "mvn test -Dtest=$(basename $(fzf -e -1 -q $1))"
+    mvn test -Dtest=$(basename $(fzf -e -1 -q $1))
   else 
-    zsh -c "mvn test -Dtest=$(basename $(fzf -e))"
+    mvn test -Dtest=$(basename $(fzf -e))
   fi
 }
 
@@ -99,8 +99,8 @@ function mvnt() {
 #
 function pytestt() {
   if [[ "$1" != "" ]]; then
-    zsh -c "pytest -s -v $(fzf -e -1 -q $1)"
+    pytest -s -v $(fzf -e -1 -q $1)
   else 
-    zsh -c "pytest -s -v $(fzf -e)"
+    pytest -s -v $(fzf -e)
   fi
 }
