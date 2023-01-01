@@ -88,9 +88,9 @@ function prompt_end() {
 #
 function mvnt() {
   if [[ "$1" != "" ]]; then
-    mvn test -Dtest=$(basename $(fzf -e -1 -q $1))
+    mvn test -Dtest=$(basename $(fzf -1 -q $1))
   else 
-    mvn test -Dtest=$(basename $(fzf -e))
+    mvn test -Dtest=$(basename $(fzf -q '!target !src/main .java '))
   fi
 }
 
