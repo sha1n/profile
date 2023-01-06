@@ -62,7 +62,7 @@ I would recommend to fork the repo and review the configuration, although it is 
 Pay extra attention to:
 - [dotfiles/.gitconfig](dotfiles/.gitconfig)
 - [dotfiles/.gitignore_global](dotfiles/.gitignore_global)
-- [aliases](include/aliases)
+- [include/aliases](include/aliases)
 
 # Does it Work with Bash and Other Shells Too?
 No, it is designed to work only with Zsh (tested extensively on `zsh 5.7.1, 5.8.1`).
