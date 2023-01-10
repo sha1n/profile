@@ -15,7 +15,7 @@ alias main='cd -P $HOME/main'
 #
 # command shortcuts
 #
-alias cdz='cd $(dirname $(fzf))'
+alias cdz='cd $(dirname $(fzf --height 50%))'
 alias vim='nvim'
 alias vimz='vim -o $(fzf -m --height 50%)'
 alias vimd='vim -d $(fzf -m --height 50%)'
