@@ -11,6 +11,30 @@ function tolower() {
   echo "$1" | tr A-Z a-z
 }
 
+function set_tab_color() {
+    case $1 in
+    green)
+    echo -n "\033]6;1;bg;red;brightness;57\a"
+    echo -n "\033]6;1;bg;green;brightness;197\a"
+    echo -n "\033]6;1;bg;blue;brightness;77\a"
+    ;;
+    red)
+    echo -n "\033]6;1;bg;red;brightness;270\a"
+    echo -n "\033]6;1;bg;green;brightness;60\a"
+    echo -n "\033]6;1;bg;blue;brightness;83\a"
+    ;;
+    orange)
+    echo -n "\033]6;1;bg;red;brightness;227\a"
+    echo -n "\033]6;1;bg;green;brightness;143\a"
+    echo -n "\033]6;1;bg;blue;brightness;10\a"
+    ;;
+    *)
+    echo "Unsupported argument '$1'"
+    echo
+    echo "\tUsage: set_tab_color <green|orange|red>"
+    esac
+ }
+
 #
 # Adds the provided alias to the last command
 # FIXME shai: escape double/single quotes or use function instead of alias?
