@@ -11,6 +11,9 @@ function tolower() {
   echo "$1" | tr A-Z a-z
 }
 
+#
+# iTerm only
+#
 function set_tab_color() {
     case $1 in
     green)
@@ -29,9 +32,7 @@ function set_tab_color() {
     echo -n "\033]6;1;bg;blue;brightness;10\a"
     ;;
     *)
-    echo "Unsupported argument '$1'"
-    echo
-    echo "\tUsage: set_tab_color <green|orange|red>"
+    echo -n "\033]6;1;bg;*;default\a"
     esac
  }
 
