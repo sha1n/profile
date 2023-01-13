@@ -1,12 +1,14 @@
 #!/usr/bin/env zsh
 
-[ ! -n "$ITERM_PROFILE" ] && exit
-
-local colors=(green yellow orange red white grey)
-
 #
 # iTerm only utilities
 #
+
+
+[ ! -n "$ITERM_PROFILE" ] && exit
+
+local colors=(green yellow red magenta blue white grey)
+
 
 function set_tab_color_rgb() {
   echo -n "\033]6;1;bg;red;brightness;$1\a"
@@ -24,27 +26,31 @@ function set_tab_color() {
 
   case $color in
   green)
-    set_tab_color_rgb 57 180 77
+    set_tab_color_rgb 178 204 8
     ;;
 
   yellow)
-    set_tab_color_rgb 197 197 0
+    set_tab_color_rgb 242 184 5
     ;;
 
   red)
-    set_tab_color_rgb 190 60 83
+    set_tab_color_rgb 239 79 13
     ;;
 
-  orange)
-    set_tab_color_rgb 227 143 10
+  magenta)
+    set_tab_color_rgb 246 16 127
+    ;;
+
+  blue)
+    set_tab_color_rgb 63 176 255
     ;;
 
   white)
-    set_tab_color_rgb 180 180 180
+    set_tab_color_rgb 250 247 239
     ;;
 
   grey)
-    set_tab_color_rgb 90 90 90
+    set_tab_color_rgb 83 94 97
     ;;
 
   default)
@@ -53,10 +59,11 @@ function set_tab_color() {
 
   *)
     if (($colors[(Ie)$__SHA1N_PROFILE_TABCOLOR])); then
-      set_tab_color "$__SHA1N_PROFILE_TABCOLOR"
+      color="$__SHA1N_PROFILE_TABCOLOR"
     else
       color=default
     fi
+    set_tab_color $color
   esac
 
   export __SHA1N_PROFILE_TABCOLOR="$color"
