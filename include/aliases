@@ -7,6 +7,7 @@ alias reload!='source $HOME/.zshrc'
 # directory shortcuts
 #
 alias home='cd $HOME'
+alias back='cd $OLDPWD'
 alias cod='cd $HOME/code'
 alias cow='cd $HOME/code/w'
 alias gos='cd $(go env GOPATH)/src/github.com/sha1n'
