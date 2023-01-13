@@ -36,6 +36,7 @@ alias pull='git pull --autostash origin $(git branch --show-current)'
 alias pull_master='git pull --rebase --autostash origin master'
 alias pullmr='git pull --recurse-submodules origin master'
 alias push='git push origin $(git branch --show-current)'
+alias branch='git branch'
 alias gc_branches='git branch | grep -v $(git branch --show-current) | xargs git branch -D'
 # gh
 alias pr='gh pr create'
