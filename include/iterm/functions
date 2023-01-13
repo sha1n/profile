@@ -21,7 +21,6 @@ function reset_tab_color() {
 
 function set_tab_color() {
   local color=$(echo "${1}" | xargs)
-  # local colors=(green yellow orange red white grey)
 
   case $color in
   green)
