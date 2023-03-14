@@ -25,6 +25,7 @@ alias grep='grep --color=always'
 alias ll='ls -lh'
 alias la='ls -lha'
 # git
+alias master='git checkout master'
 alias status='git status'
 alias reset='git reset'
 alias add='git add'
