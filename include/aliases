@@ -89,3 +89,4 @@ alias mvndt='mvn dependency:tree'
 # utilities
 alias uuid="uuidgen |  awk '{print tolower(\$0)}'"
 alias history='history 1'
+alias diff='diff --side-by-side --suppress-common-lines'
