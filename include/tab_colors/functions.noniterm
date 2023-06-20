@@ -1,0 +1,7 @@
+#!/usr/bin/env zsh
+
+function set_tab_color_rgb() {}
+
+function reset_tab_color() {}
+
+function set_tab_color() {}

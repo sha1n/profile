@@ -1,12 +1,5 @@
 #!/usr/bin/env zsh
 
-#
-# iTerm only utilities
-#
-
-
-[ ! -n "$ITERM_PROFILE" ] && exit
-
 local colors=(green yellow red magenta blue white grey)
 
 

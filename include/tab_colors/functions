@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+
+#
+# tab colors are supported only in iTerm
+#
+if [[ -n "$ITERM_PROFILE" ]]; then 
+  source "$SHA1N_PROFILE_HOME/include/tab_colors/functions.iterm"
+else
+  source "$SHA1N_PROFILE_HOME/include/tab_colors/functions.noniterm"
+fi

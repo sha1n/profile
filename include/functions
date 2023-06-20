@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
-source "$SHA1N_PROFILE_HOME/include/iterm/functions"
+source "$SHA1N_PROFILE_HOME/include/tab_colors/functions"
 
 function toupper() {
   echo "$1" | tr a-z A-Z
