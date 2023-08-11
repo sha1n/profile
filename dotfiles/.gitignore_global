@@ -19,6 +19,8 @@ bazel-*/
 
 # Python
 __pycache__/
+.mypy_cache
+.pytest_cache
 *.py[cod]
 *$py.class
 venv/
