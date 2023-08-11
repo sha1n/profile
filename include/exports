@@ -23,3 +23,5 @@ export BAZEL_DISK_CACHE_MAX_AGE="14d"
 
 # pytest
 export PYTEST_ADDOPTS='-r=fE --maxfail=1 --no-header --failed-first --durations=5'
+# python cache directories location
+export PYTHONPYCACHEPREFIX="${HOME}/.cache/Python"
