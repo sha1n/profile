@@ -22,6 +22,6 @@ export BAZEL_DISK_CACHE_DIR="$HOME/.cache/bazel/disk_cache"
 export BAZEL_DISK_CACHE_MAX_AGE="14d"
 
 # pytest
-export PYTEST_ADDOPTS='-r=fE --maxfail=1 --no-header --failed-first --durations=5'
+export PYTEST_ADDOPTS='-r=fE --maxfail=1 --no-header --failed-first --durations=5 -vv'
 # python cache directories location
 export PYTHONPYCACHEPREFIX="${HOME}/.cache/Python"
