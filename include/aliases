@@ -90,7 +90,9 @@ alias mvnci='mvn clean install'
 alias mvnq='mvn -T 1C clean install -DskipTests'
 alias mvndt='mvn dependency:tree'
 alias mvndr='mvn dependency:resolve -U'
-alias mvndpl='mvn dependency:purge-local-repository'
+alias mvndpl='mvn dependency:purge-local-repository -DsnapshotsOnly=true'
+alias mvndplq='mvn dependency:purge-local-repository -DsnapshotsOnly=true -DactTransitively=false'
+alias mvndpla='mvn dependency:purge-local-repository'
 # filters out non first degree dependencies from 'mvndt' output
 alias mvndtt='mvndt | grep --color=never -F "[INFO] +- " | tr -d "[INFO] +- "'
 # utilities
