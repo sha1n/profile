@@ -1,0 +1,22 @@
+#!/usr/bin/env zsh
+
+#
+# Starts a new line at the end of the prompt
+#
+function prompt_end() {
+  if [[ -n $CURRENT_BG ]]; then
+      print -n "%{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
+  else
+      print -n "%{%k%}"
+  fi
+
+  # Warp already adds a new line at the end of the prompt
+  if [[ $TERM_PROGRAM == "WarpTerminal" ]]; then
+    CURRENT_BG=''
+    return
+  fi
+
+  print -n "\n❯%{%f%}"
+
+  CURRENT_BG=''
+}
