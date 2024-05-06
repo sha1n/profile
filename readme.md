@@ -65,6 +65,9 @@ Pay extra attention to:
 - [include/aliases](include/aliases)
 
 # Does it Work with Bash and Other Shells Too?
-No, it is designed to work only with Zsh (tested extensively on `zsh 5.7.1, 5.8.1`).
+No, it is designed to work only with Zsh. Tested extensively on macOS with `zsh` versions:
+- 5.7.1
+- 5.8.1
+- 5.9
 
 
