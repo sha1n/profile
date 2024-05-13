@@ -13,6 +13,10 @@ export GREP_COLOR='1;35;40'
 
 PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
 
+# Backup
+export BACKUP_DST_PATH="/Volumes/Backup/latest"
+export BACKUP_SRC_PATH="/Volumes/Content"
+
 #
 # bazel disk cache wrapper config (see: ./functions)
 #
