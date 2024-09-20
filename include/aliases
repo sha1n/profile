@@ -79,6 +79,7 @@ alias dvm='source dvm.sh'
 alias k='kubectl'
 alias ke='kubectl get events --sort-by=".lastTimestamp"'
 alias kenn='kubectl get events --sort-by=".lastTimestamp" --field-selector type!=Normal'
+alias kc='kubectl --kubeconfig'
 # bazel
 alias bazel='bazel_with_disk_cache_guard'
 alias bazel_rm='sudo rm -rf ~/.cache/bazel'
