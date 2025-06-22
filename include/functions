@@ -105,3 +105,19 @@ function pytestt() {
     pytest -s -v $(fzf -e)
   fi
 }
+
+#
+# Export JAVA_HOME from brew openjdk
+#
+function export_openjdk_formula() {
+  local formula="openjdk@${1}"
+  local java_home="$(brew --prefix "$formula")"
+  if [[ -d "$java_home" ]]; then
+    export JAVA_HOME="$java_home"
+    local java_version=$("$JAVA_HOME/bin/java" -version 2>&1 | head -n 1 | awk -F '"' '{print $2}')
+    echo "JAVA_HOME set to $JAVA_HOME"
+    echo "Java version is: $java_version"
+  else
+    __profile_log_error "openjdk@21 not found in brew"
+  fi
+}
