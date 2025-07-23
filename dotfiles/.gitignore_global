@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Maven
+pom.xml.versionsBackup
+
 # common output dirs
 bin/
 dist/
@@ -48,4 +51,7 @@ vendor/
 .bertconfig
 .start
 .test-env
+
+# Claude code
+.claude
 
