@@ -102,4 +102,5 @@ alias history='history 1'
 alias diff='diff --side-by-side --suppress-common-lines'
 # backup
 alias backup="rsync -a --delete --delete-during -P --force --exclude=\".*\" \"$BACKUP_SRC_PATH\" \"$BACKUP_DST_PATH\""
+alias studio_backup="zsh $CODE/studio-backup/run_backup.sh"
 
