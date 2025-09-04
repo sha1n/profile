@@ -86,16 +86,18 @@ alias bazel_rm='sudo rm -rf ~/.cache/bazel'
 # dockerized mysql
 alias mysqld8=docker run -v "$HOME/mysql_mount/":/var/lib/mymysql -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8 --secure-file-priv=''
 # maven
-alias mvnit='mvn test -amd -pl'
-alias mvnf='mvn -U clean install'
+alias mvnit='mvn verify -amd -pl'
 alias mvnci='mvn clean install'
+alias mvncv='mvn clean verify'
 alias mvnq='mvn -T 1C clean install -DskipTests'
+alias mvndl='mvn dependency:list'
 alias mvndt='mvn dependency:tree'
 alias mvndr='mvn dependency:resolve -U'
 alias mvnp='mvn dependency:purge-local-repository -DsnapshotsOnly=true'
 alias mvnpa='mvn dependency:purge-local-repository'
 # filters out non first degree dependencies from 'mvndt' output
 alias mvndtt='mvndt | grep --color=never -F "[INFO] +- " | tr -d "[INFO] +- "'
+alias mvnsv='mvn versions:set -DnewVersion='
 # utilities
 alias uuid="uuidgen |  awk '{print tolower(\$0)}'"
 alias history='history 1'
