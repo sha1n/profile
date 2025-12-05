@@ -3,13 +3,11 @@
 
 # Maven
 pom.xml.versionsBackup
-
-# common output dirs
-bin/
-dist/
 target/
 
-*.log
+# Common output dirs
+bin/
+dist/
 
 # VS code
 .vscode/
@@ -46,7 +44,7 @@ vendor/
 .vagrant
 .vm_config.json
 
-# my conventions
+# My conventions
 .pethrc
 .bertconfig
 .start
@@ -55,3 +53,6 @@ vendor/
 # Claude code
 .claude
 
+# Other dirty files
+*.log
+*.jfr
