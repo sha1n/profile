@@ -40,6 +40,7 @@ alias push='git push origin $(git branch --show-current)'
 alias branch='git branch'
 alias checkout='git checkout'
 alias gc_branches='git branch | grep -v "^* $(git branch --show-current)$" | xargs git branch -D'
+alias sync_submodules='git submodule update --init --recursive'
 # gh
 alias pr='gh pr create'
 alias prs='gh pr list'
@@ -86,7 +87,7 @@ alias bazel_rm='sudo rm -rf ~/.cache/bazel'
 # dockerized mysql
 alias mysqld8=docker run -v "$HOME/mysql_mount/":/var/lib/mymysql -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8 --secure-file-priv=''
 # maven
-alias mvnit='mvn verify -amd -pl'
+alias mvn1='mvn verify -amd -pl'
 alias mvnci='mvn clean install'
 alias mvncv='mvn clean verify'
 alias mvnq='mvn -T 1C clean install -DskipTests'
