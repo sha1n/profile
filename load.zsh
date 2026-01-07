@@ -12,7 +12,6 @@ export LC_CTYPE="en_US.UTF-8"
 # plugins
 fpath=($SHA1N_PROFILE_HOME/zsh-plugins/zsh-completions/src $fpath)
 source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh
-source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
 source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 # theme
@@ -25,3 +24,5 @@ source $SHA1N_PROFILE_HOME/include/keybindings
 source $SHA1N_PROFILE_HOME/include/completions
 source $SHA1N_PROFILE_HOME/include/history
 source $SHA1N_PROFILE_HOME/include/prompt
+
+source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
