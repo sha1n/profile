@@ -11,15 +11,21 @@ syntax enable
 set backspace=indent,eol,start
 
 " show line numbers
-@REM set number
-" highlight cursor line
-@REM set cursorline
+set number
+set relativenumber
 
-" searchi
+" highlight cursor line
+" set cursorline
+
+" search settings
 " search as you type
 set incsearch
 " highlight matches
 set hlsearch
+" ignore case when searching
+set ignorecase
+" unless you type a capital letter
+set smartcase
 
 set foldenable
 
@@ -32,3 +38,11 @@ set softtabstop=2
 
 set autoindent
 set autoread
+
+" UX Improvements
+set signcolumn=yes
+set updatetime=300
+set undofile
+
+" clipboard integration
+set clipboard=unnamed
