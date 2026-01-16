@@ -46,8 +46,25 @@ function link_dotfiles() {
   __profile_log_info "linking dot files..."
   
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
+    if [[ "$file" == "init.lua" ]]; then
+      continue
+    fi
     link_dotfile "$file" || __pe_log_error "failed to link '$file'!"
   done
+}
+
+function setup_neovim() {
+  __profile_log_info "setting up neovim..."
+  local nvim_config_dir="$HOME/.config/nvim"
+  
+  create_directory "$nvim_config_dir" || __pe_log_error "failed to create '$nvim_config_dir'!"
+
+  if [[ -f "$nvim_config_dir/init.lua" ]]; then
+       __profile_log_warn "the file '$nvim_config_dir/init.lua' already exists. Skipping..."
+  else
+       __profile_log_info "linking init.lua..."
+       ln -s "$dotfiles_dir/init.lua" "$nvim_config_dir/init.lua"
+  fi
 }
 
 function create_directory() {
@@ -83,5 +100,7 @@ link_dotfiles
 create_directories 
 
 validate_shell_rc_file && install_source_command 
+
+setup_neovim
 
 __profile_log_info "done!"

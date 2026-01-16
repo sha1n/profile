@@ -15,11 +15,24 @@ function link_dotfile() {
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
-    if [[ "$file" != ".gitconfig" ]]; then
+    if [[ "$file" != ".gitconfig" && "$file" != "init.lua" ]]; then
       link_dotfile "$file" && __profile_log_success "ok!" || error "failed!"
     fi
   done
 }
 
+function setup_neovim() {
+  __profile_log_info "updating neovim config..."
+  local nvim_config_dir="$HOME/.config/nvim"
+  
+  if [[ ! -d "$nvim_config_dir" ]]; then
+     mkdir -p "$nvim_config_dir"
+  fi
+
+  __profile_log_info "linking init.lua..."
+  ln -sf "$dotfiles_dir/init.lua" "$nvim_config_dir/init.lua"
+}
+
 link_dotfiles
+setup_neovim
 __profile_log_success "done!"
