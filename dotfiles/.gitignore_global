@@ -53,6 +53,12 @@ vendor/
 # Claude code
 .claude
 
+# Gemini CLI
+.gemini
+
+# Conversational LLM agent reviews directory
+.reviews
+
 # Other dirty files
 *.log
 *.jfr
