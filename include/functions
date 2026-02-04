@@ -11,6 +11,60 @@ function tolower() {
   echo "$1" | tr A-Z a-z
 }
 
+#
+# Private helper to get git file timestamp in UTC ISO format
+#
+function __profile_git_file_timestamp() {
+  local file="$1"
+  local filter="$2"
+  local position="$3"  # "first" or "last"
+
+  local timestamp
+  if [[ "$position" == "first" ]]; then
+    timestamp=$(git log --follow --format="%at" $filter -- "$file" | tail -1)
+  else
+    timestamp=$(git log --follow --format="%at" $filter -- "$file" | head -1)
+  fi
+
+  if [[ -z "$timestamp" ]]; then
+    echo "Error: File not found in git history: $file" >&2
+    return 1
+  fi
+
+  # Convert to UTC ISO format (portable between macOS and Linux)
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    date -u -r "$timestamp" "+%Y-%m-%dT%H:%M:%SZ"
+  else
+    date -u -d "@$timestamp" "+%Y-%m-%dT%H:%M:%SZ"
+  fi
+}
+
+#
+# Gets the UTC timestamp when a file was first added to git
+#
+function git_file_created() {
+  local file="$1"
+  if [[ -z "$file" ]]; then
+    echo "Usage: git_file_created <file-path>" >&2
+    return 1
+  fi
+
+  __profile_git_file_timestamp "$file" "--diff-filter=A" "first"
+}
+
+#
+# Gets the UTC timestamp when a file was last modified in git
+#
+function git_file_modified() {
+  local file="$1"
+  if [[ -z "$file" ]]; then
+    echo "Usage: git_file_modified <file-path>" >&2
+    return 1
+  fi
+
+  __profile_git_file_timestamp "$file" "" "last"
+}
+
 
 #
 # Adds the provided alias to the last command
