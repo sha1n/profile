@@ -21,6 +21,7 @@ alias vim='nvim'
 alias vimz='vim -o $(fzf -m --height 50%)'
 alias vimd='vim -d $(fzf -m --height 50%)'
 alias grep='grep --color=always'
+alias clauded='claude --debug'
 # ls
 alias ll='ls -lh'
 alias la='ls -lha'
