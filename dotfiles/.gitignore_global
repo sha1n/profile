@@ -51,18 +51,16 @@ vendor/
 .test-env
 
 # Claude code
-.claude
+.claude/settings.local.json
 
 # Gemini CLI
 .gemini
 
 # Conversational LLM agent reviews directory
 .reviews
+.plans
 
 # Other dirty files
 *.log
 *.jfr
 
-# LLM Instructions
-CLAUDE.md
-GEMINI.md
