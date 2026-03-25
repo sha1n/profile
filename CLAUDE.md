@@ -30,16 +30,23 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 ./install.sh              # Full setup: submodules, symlinks, dirs, .zshrc, neovim
 make test                 # Run tests (also: ./tests/run_tests.sh)
 make update_submodules    # Update all git submodules
+reload!                   # Alias to re-source ~/.zshrc (use after editing include/ files)
 ```
+
+To run a single test file directly: `zsh tests/my_test.test.sh` (but prefer `make test` — the runner sets up the sandbox environment via `zsh-scriptest`).
 
 ## Writing Tests
 
 Tests use the `zsh-scriptest` framework (submodule in `tests/`). Test files must be named `*.test.sh` and placed in `tests/`.
 
-- Tests run in a **sandboxed `$HOME`** (temporary empty dir). The test must verify the sandbox is clean and clean up after itself.
+- Tests run in a **sandboxed `$HOME`** (temporary empty dir). Each test file must:
+  1. Verify `$HOME` is empty at start (guard against running outside sandbox)
+  2. Write a fingerprint file to `$HOME` and assert it exists in cleanup (proves sandbox isolation)
+  3. `rm -rf "$HOME"` in cleanup
 - Available matchers from `matchers.sh`: `assert_contains`, `assert_not_empty`, `assert_file_exists`, `assert_dir_exists`, etc.
 - Use `test_case_title` / `test_setup_title` / `test_teardown_title` for structured output.
-- See `tests/sanity.test.sh` for the pattern.
+- Test functions are called sequentially at the bottom of the file (not auto-discovered).
+- See `tests/sanity.test.sh` for the canonical pattern.
 
 CI runs on **ubuntu-latest** and **macos-latest** (GitHub Actions, `.github/workflows/ci.yml`).
 
@@ -64,6 +71,9 @@ When modifying `include/aliases`:
 - `$SHA1N_PROFILE_HOME` — This repo's directory path (set in `load.zsh`, used everywhere)
 - `$CODE` — `$HOME/code` (defined in `include/exports`)
 - Other env vars: `include/exports`
+
+### Scripts as CLI Commands
+Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` and `n` (yarn/npm wrappers), `docker_cleanup`, `git_config_hook`. New scripts placed here are automatically available as commands.
 
 ### Cross-Platform
 Changes must work on both macOS and Linux. Use platform checks (`$OSTYPE`) when behavior differs (see `__profile_git_file_timestamp` for an example).
