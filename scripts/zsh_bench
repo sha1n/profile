@@ -1,0 +1,81 @@
+#!/usr/bin/env zsh
+
+# zsh_bench - Measure zsh interactive shell startup time
+#
+# Usage: zsh_bench [-n iterations] [-o]
+#   -n  Number of iterations (default: 10)
+#   -o  Save results to .benchmarks/
+
+zmodload zsh/datetime
+
+local iterations=10
+local save=false
+local script_dir="${${(%):-%x}:a:h}"
+local repo_dir="${script_dir:h}"
+local benchmarks_dir="$repo_dir/.benchmarks"
+
+while getopts "n:o" opt; do
+  case $opt in
+    n) iterations=$OPTARG ;;
+    o) save=true ;;
+    \?) echo "Usage: zsh_bench [-n iterations] [-o]" >&2; return 1 ;;
+  esac
+done
+
+echo "Running $iterations iterations...\n"
+
+local -a times
+for i in $(seq 1 $iterations); do
+  local start=$EPOCHREALTIME
+  zsh -i -c exit 2>/dev/null
+  local end=$EPOCHREALTIME
+  local elapsed=$(( (end - start) * 1000 ))
+  times+=($elapsed)
+  printf "  #%2d  %6.1f ms\n" "$i" "$elapsed"
+done
+
+# Sort times
+local -a sorted
+sorted=(${(on)times})
+
+local min=${sorted[1]}
+local max=${sorted[-1]}
+local median
+local mid=$(( iterations / 2 ))
+if (( iterations % 2 == 0 )); then
+  median=$(( (sorted[mid] + sorted[mid + 1]) / 2.0 ))
+else
+  median=${sorted[mid + 1]}
+fi
+
+local sum=0
+for t in "${times[@]}"; do
+  sum=$(( sum + t ))
+done
+local avg=$(( sum / iterations ))
+
+echo ""
+echo "Results:"
+echo "  min:    $(printf '%6.1f' $min) ms"
+echo "  max:    $(printf '%6.1f' $max) ms"
+echo "  avg:    $(printf '%6.1f' $avg) ms"
+echo "  median: $(printf '%6.1f' $median) ms"
+
+if $save; then
+  mkdir -p "$benchmarks_dir"
+  local timestamp=$(date +%Y%m%d_%H%M%S)
+  local outfile="$benchmarks_dir/${timestamp}.txt"
+  {
+    echo "zsh_bench — $iterations iterations — $(date)"
+    echo ""
+    for i in $(seq 1 $iterations); do
+      printf "  #%2d  %6.1f ms\n" "$i" "${times[$i]}"
+    done
+    echo ""
+    echo "min:    $(printf '%6.1f' $min) ms"
+    echo "max:    $(printf '%6.1f' $max) ms"
+    echo "avg:    $(printf '%6.1f' $avg) ms"
+    echo "median: $(printf '%6.1f' $median) ms"
+  } > "$outfile"
+  echo "\nResults saved to $outfile"
+fi

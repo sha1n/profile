@@ -11,10 +11,13 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 ### Loading Chain
 1. `~/.zshrc` sources `load.zsh` (added by `install.sh`)
 2. `load.zsh` orchestrates everything:
-   - Locale, zsh options, plugins (git submodules), theme
+   - Locale, zsh options, `path-ethic` plugin, theme (synchronous — needed at startup)
    - Sources all `include/` files: exports, aliases, functions, keybindings, completions, history, prompt
-   - **`zsh-syntax-highlighting` MUST be loaded LAST** (after all other plugins and keybindings)
+   - **Deferred plugins** (via `zsh-defer`, interactive sessions only): `zsh-history-substring-search`, `zsh-autosuggestions`, `zsh-syntax-highlighting` — these load after the prompt appears
+   - **Non-interactive fallback**: deferred plugins load synchronously when `[[ ! -o interactive ]]` (e.g., tests)
+   - **`zsh-syntax-highlighting` MUST be loaded LAST** (after all other plugins and keybindings, even when deferred)
    - **`fpath` must include `zsh-completions/src` BEFORE `autoload`**
+   - **History-substring-search keybindings** are deferred in `load.zsh` (not in `include/keybindings`) because they depend on the deferred plugin
 
 ### Key Directories
 - **`include/`** — Modular shell config files sourced by `load.zsh`
@@ -27,10 +30,14 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 ## Commands
 
 ```bash
-./install.sh              # Full setup: submodules, symlinks, dirs, .zshrc, neovim
+./install.sh              # Full setup: submodules, symlinks, dirs, .zshrc, neovim, zwc compilation
 make test                 # Run tests (also: ./tests/run_tests.sh)
 make update_submodules    # Update all git submodules
-reload!                   # Alias to re-source ~/.zshrc (use after editing include/ files)
+make compile              # Compile zsh files to .zwc bytecode
+make clean_zwc            # Remove all .zwc bytecode files
+reload!                   # Alias: recompiles .zwc files, then re-sources ~/.zshrc
+zsh_bench                 # Benchmark shell startup time (see scripts/zsh_bench)
+zsh_bench -n 20 -o        # 20 iterations, save results to .benchmarks/
 ```
 
 To run a single test file directly: `zsh tests/my_test.test.sh` (but prefer `make test` — the runner sets up the sandbox environment via `zsh-scriptest`).
@@ -73,7 +80,13 @@ When modifying `include/aliases`:
 - Other env vars: `include/exports`
 
 ### Scripts as CLI Commands
-Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` and `n` (yarn/npm wrappers), `docker_cleanup`, `git_config_hook`. New scripts placed here are automatically available as commands.
+Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` and `n` (yarn/npm wrappers), `docker_cleanup`, `git_config_hook`, `zsh_bench` (startup benchmarking). New scripts placed here are automatically available as commands.
+
+### Performance
+- **Startup time**: Optimized via `compinit` caching, `.zwc` bytecode compilation, and `zsh-defer` plugin deferral. Use `zsh_bench` to measure impact of changes.
+- **compinit caching** (`include/completions`): The `.zcompdump` file is only regenerated when stale (>24h) or missing. `compinit -C` is used otherwise.
+- **`.zwc` bytecode**: Zsh auto-prefers `file.zwc` over `file` when sourcing (if `.zwc` is newer). Stale `.zwc` files are harmless — zsh falls back to the source. `reload!` and `install.sh` recompile automatically. Some files (aliases, exports, functions) fail `zcompile` silently — this is expected.
+- **`zsh-defer`**: Only used in interactive sessions. Keybindings that depend on deferred plugins must also be deferred — see `load.zsh` for the pattern.
 
 ### Cross-Platform
 Changes must work on both macOS and Linux. Use platform checks (`$OSTYPE`) when behavior differs (see `__profile_git_file_timestamp` for an example).

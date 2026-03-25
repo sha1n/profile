@@ -19,3 +19,6 @@
 [submodule "zsh-plugins/zsh-autosuggestions"]
 	path = zsh-plugins/zsh-autosuggestions
 	url = git@github.com:zsh-users/zsh-autosuggestions.git
+[submodule "zsh-plugins/zsh-defer"]
+	path = zsh-plugins/zsh-defer
+	url = https://github.com/romkatv/zsh-defer.git
