@@ -13,6 +13,8 @@ install_profile() {
     touch "$HOME/$fingerprint"
     # install profile in the test sandbox HOME directory
     source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
+    # source load.zsh at top level so exports are visible to all run_test subshells
+    source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
   fi
 }
 
@@ -27,8 +29,6 @@ cleanup() {
 
 function test_source() {
   test_case_title
-
-  source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
 
   assert_not_empty "$SHA1N_PROFILE_HOME"
 }
@@ -62,9 +62,10 @@ function test_dir_path_elements() {
 }
 
 install_profile
-test_source
-test_locale_set
-test_env_vars
-test_dir_layout
-test_dir_path_elements
+run_test test_source
+run_test test_locale_set
+run_test test_env_vars
+run_test test_dir_layout
+run_test test_dir_path_elements
+finish_tests
 cleanup
