@@ -103,4 +103,11 @@ validate_shell_rc_file && install_source_command
 
 setup_neovim
 
+__profile_log_info "compiling zsh files to bytecode..."
+for f in "$SHA1N_PROFILE_HOME"/load.zsh "$SHA1N_PROFILE_HOME"/include/*(.) "$SHA1N_PROFILE_HOME"/scripts/lib.zsh; do
+  [[ "$f" == *.zwc ]] && continue
+  zcompile "$f" 2>/dev/null
+done
+__profile_log_success "bytecode compilation complete"
+
 __profile_log_info "done!"

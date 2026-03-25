@@ -65,3 +65,6 @@ vendor/
 *.jfr
 
 .benchmarks/
+
+# Zsh bytecode compiled files
+*.zwc

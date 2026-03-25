@@ -12,8 +12,17 @@ export LC_CTYPE="en_US.UTF-8"
 # plugins
 fpath=($SHA1N_PROFILE_HOME/zsh-plugins/zsh-completions/src $fpath)
 source $SHA1N_PROFILE_HOME/zsh-plugins/path-ethic/path-ethic.plugin.zsh
-source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
-source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# zsh-defer for deferring non-critical interactive plugins
+if [[ -o interactive ]]; then
+  source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-defer/zsh-defer.plugin.zsh
+  zsh-defer source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+  zsh-defer source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+else
+  source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+  source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+fi
+
 # theme
 source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
 
@@ -25,4 +34,15 @@ source $SHA1N_PROFILE_HOME/include/completions
 source $SHA1N_PROFILE_HOME/include/history
 source $SHA1N_PROFILE_HOME/include/prompt
 
-source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# deferred keybindings that depend on history-substring-search
+if [[ -o interactive ]]; then
+  zsh-defer bindkey "^[[A" history-substring-search-up
+  zsh-defer bindkey "^[[B" history-substring-search-down
+fi
+
+# zsh-syntax-highlighting MUST be loaded LAST
+if [[ -o interactive ]]; then
+  zsh-defer source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+else
+  source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi

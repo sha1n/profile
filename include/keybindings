@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 
-# history-substring-search key bindings
-bindkey "^[[A" history-substring-search-up
-bindkey "^[[B" history-substring-search-down
+# history-substring-search key bindings are deferred in load.zsh
+# (they depend on the zsh-history-substring-search plugin which is also deferred)
+
 # line navigation
 bindkey  "^[[H"   beginning-of-line
 bindkey  "^[[F"   end-of-line
