@@ -52,6 +52,7 @@ vendor/
 
 # Claude code
 .claude/settings.local.json
+.claude/worktrees/
 
 # Gemini CLI
 .gemini
