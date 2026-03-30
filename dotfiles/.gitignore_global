@@ -44,12 +44,6 @@ vendor/
 .vagrant
 .vm_config.json
 
-# My conventions
-.pethrc
-.bertconfig
-.start
-.test-env
-
 # Claude code
 .claude/settings.local.json
 .claude/worktrees/
@@ -57,15 +51,22 @@ vendor/
 # Gemini CLI
 .gemini
 
-# Conversational LLM agent reviews directory
-.reviews
-.plans
-
 # Other dirty files
 *.log
 *.jfr
 
-.benchmarks/
-
 # Zsh bytecode compiled files
 *.zwc
+
+#
+# My conventions
+#
+.pethrc
+.bertconfig
+.start
+.test-env
+# Conversational LLM agent reviews directory
+.reviews/
+.plans/
+.benchmarks/
+.worktree/

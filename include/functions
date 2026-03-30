@@ -221,3 +221,120 @@ function export_openjdk_formula() {
   echo "💡 You can also add \$JAVA_HOME/bin to your PATH:"
   echo "   export PATH=\"\$JAVA_HOME/bin:\$PATH\""
 }
+
+# Git worktree management
+
+function __profile_git_repo_root() {
+  local git_common_dir
+  git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
+  if [[ $? -ne 0 ]]; then
+    __profile_log_error "not inside a git repository"
+    return 1
+  fi
+  # Resolve to absolute path (relative when in main worktree, absolute in secondary)
+  # then take the parent of .git to get the repo root.
+  echo "${git_common_dir:A:h}"
+}
+
+function wt() {
+  local branch="$1"
+
+  if [[ -z "$branch" ]]; then
+    echo "Usage: wt <branch-name>"
+    git worktree list 2>/dev/null
+    return 1
+  fi
+
+  local root
+  root=$(__profile_git_repo_root) || return 1
+
+  local wt_dir="$root/.worktree/$branch"
+
+  if [[ -d "$wt_dir" ]]; then
+    __profile_log_info "worktree already exists, entering '$wt_dir'"
+    cd "$wt_dir"
+    return 0
+  fi
+
+  local output
+  if git show-ref --verify --quiet "refs/heads/$branch" 2>/dev/null; then
+    output=$(git worktree add "$wt_dir" "$branch" 2>&1)
+  else
+    output=$(git worktree add -b "$branch" "$wt_dir" 2>&1)
+  fi
+
+  if [[ $? -ne 0 ]]; then
+    __profile_log_error "failed to create worktree: $output"
+    return 1
+  fi
+
+  cd "$wt_dir"
+  __profile_log_success "worktree created at '.worktree/$branch'"
+}
+
+function wt_rm() {
+  local branch="$1"
+
+  if [[ -z "$branch" ]]; then
+    echo "Usage: wt_rm <branch-name>"
+    git worktree list 2>/dev/null
+    return 1
+  fi
+
+  local root
+  root=$(__profile_git_repo_root) || return 1
+
+  local wt_dir="$root/.worktree/$branch"
+
+  if [[ ! -d "$wt_dir" ]]; then
+    __profile_log_error "worktree not found: '.worktree/$branch'"
+    return 1
+  fi
+
+  echo "  Worktree: .worktree/$branch"
+  echo "  Branch:   $branch"
+  echo ""
+
+  local reply
+  read "reply?Remove worktree '.worktree/$branch'? [y/N] "
+  if [[ "$reply" != [yY] ]]; then
+    __profile_log_info "cancelled"
+    return 0
+  fi
+
+  # if cwd is inside the worktree, move out first
+  if [[ "$PWD" == "$wt_dir"* ]]; then
+    cd "$root"
+  fi
+
+  local output
+  output=$(git worktree remove "$wt_dir" 2>&1)
+  if [[ $? -ne 0 ]]; then
+    __profile_log_error "failed to remove worktree: $output"
+    __profile_log_warn "try cleaning up manually or use: git worktree remove --force '$wt_dir'"
+    return 1
+  fi
+
+  __profile_log_success "worktree removed"
+
+  read "reply?Also delete local branch '$branch'? [y/N] "
+  if [[ "$reply" != [yY] ]]; then
+    __profile_log_info "keeping branch '$branch'"
+    return 0
+  fi
+
+  output=$(git branch -d "$branch" 2>&1)
+  if [[ $? -ne 0 ]]; then
+    __profile_log_warn "branch not fully merged: $output"
+    read "reply?Force delete branch '$branch'? [y/N] "
+    if [[ "$reply" == [yY] ]]; then
+      git branch -D "$branch"
+      __profile_log_success "branch '$branch' force deleted"
+    else
+      __profile_log_info "keeping branch '$branch'"
+    fi
+    return 0
+  fi
+
+  __profile_log_success "branch '$branch' deleted"
+}
