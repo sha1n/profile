@@ -50,6 +50,7 @@ vendor/
 
 # Gemini CLI
 .gemini
+.antigravitycli/
 
 # Other dirty files
 *.log
@@ -70,3 +71,5 @@ vendor/
 .plans/
 .benchmarks/
 .worktree/
+
+docs/superpowers/
