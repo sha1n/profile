@@ -22,3 +22,6 @@
 [submodule "zsh-plugins/zsh-defer"]
 	path = zsh-plugins/zsh-defer
 	url = https://github.com/romkatv/zsh-defer.git
+[submodule "zsh-plugins/fzf-tab"]
+	path = zsh-plugins/fzf-tab
+	url = https://github.com/Aloxaf/fzf-tab

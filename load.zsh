@@ -34,6 +34,13 @@ source $SHA1N_PROFILE_HOME/include/completions
 source $SHA1N_PROFILE_HOME/include/history
 source $SHA1N_PROFILE_HOME/include/prompt
 
+# fzf-tab: after compinit (include/completions), before zsh-syntax-highlighting
+if [[ -o interactive ]]; then
+  zsh-defer source $SHA1N_PROFILE_HOME/zsh-plugins/fzf-tab/fzf-tab.plugin.zsh
+else
+  source $SHA1N_PROFILE_HOME/zsh-plugins/fzf-tab/fzf-tab.plugin.zsh
+fi
+
 # deferred keybindings that depend on history-substring-search
 if [[ -o interactive ]]; then
   zsh-defer bindkey "^[[A" history-substring-search-up
