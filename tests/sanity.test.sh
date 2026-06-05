@@ -24,6 +24,7 @@ cleanup() {
   if [[ -f "$HOME/$fingerprint" ]]; then
     echo
     rm -rf "$HOME"
+    mkdir -p "$HOME"
   fi
 }
 
