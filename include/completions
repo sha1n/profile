@@ -13,3 +13,6 @@ else
   compinit -C
 fi
 autoload -U +X bashcompinit && bashcompinit
+
+zstyle ':fzf-tab:*' switch-group ',' '.'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls -1 --color=always $realpath'
