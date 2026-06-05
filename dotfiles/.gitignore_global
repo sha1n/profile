@@ -47,8 +47,9 @@ vendor/
 # Claude code
 .claude/settings.local.json
 .claude/worktrees/
+.claude/memory
 
-# Gemini CLI
+# Antigravity
 .gemini
 .antigravitycli/
 
@@ -69,6 +70,7 @@ vendor/
 # Conversational LLM agent reviews directory
 .reviews/
 .plans/
+.research/
 .benchmarks/
 .worktree/
 
