@@ -24,6 +24,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 - **`scripts/`** — Executable tools, added to `$PATH` via `include/exports`. Any file here is a CLI command.
   - `lib.zsh` — Shared library (logging, tree search) sourced by functions and install script
 - **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live)
+- **`claude/`** — Global Claude Code instructions (`CLAUDE.md`). `install.sh` symlinks `~/.claude/CLAUDE.md` to this file. If `~/.claude/CLAUDE.md` already exists, install prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
 - **`zsh-plugins/`, `zsh-theme/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
 

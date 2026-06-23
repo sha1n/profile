@@ -5,6 +5,7 @@ source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 source "$SHA1N_PROFILE_HOME/include/exports"
 
 dotzshrc="$HOME/.zshrc"
+dotclauderc="$HOME/.claude/CLAUDE.md"
 dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
 dirs=("$HOME/.local/bin" "$CODE/w")
 
@@ -30,6 +31,34 @@ function install_source_command() {
     __profile_log_info "installed successfully!"
     __profile_log_info "to verify installation start new session or source $dotzshrc"
   fi
+}
+
+function install_claude_global() {
+  __profile_log_info "linking global Claude Code instructions..."
+  local claude_md="$SHA1N_PROFILE_HOME/claude/CLAUDE.md"
+
+  create_directory "${dotclauderc:h}"
+
+  # Already linked to the profile — nothing to do.
+  if [[ -L "$dotclauderc" && "$(readlink "$dotclauderc")" == "$claude_md" ]]; then
+    __profile_log_warn "'$dotclauderc' is already linked to the profile. Skipping..."
+    return 0
+  fi
+
+  # Existing file or link: replacing it is destructive, so ask first (default: Yes).
+  if [[ -e "$dotclauderc" || -L "$dotclauderc" ]]; then
+    local reply
+    read "reply?'$dotclauderc' already exists. Replace it with a link to the profile's CLAUDE.md? [n/Y] "
+    if [[ "$reply" == [nN] ]]; then
+      __profile_log_info "keeping existing '$dotclauderc'"
+      return 0
+    fi
+    rm -f "$dotclauderc"
+  fi
+
+  __profile_log_info "linking CLAUDE.md..."
+  ln -s "$claude_md" "$dotclauderc"
+  return "$?"
 }
 
 function link_dotfile() {
@@ -99,7 +128,9 @@ link_dotfiles
 
 create_directories 
 
-validate_shell_rc_file && install_source_command 
+validate_shell_rc_file && install_source_command
+
+install_claude_global
 
 setup_neovim
 
