@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # profile self update
-alias update_profile="git -C $SHA1N_PROFILE_HOME pull origin $(git -C $SHA1N_PROFILE_HOME branch --show-current); git -C $SHA1N_PROFILE_HOME submodule update --init --recursive"
+alias update_profile='git -C $SHA1N_PROFILE_HOME pull origin $(git -C $SHA1N_PROFILE_HOME branch --show-current); git -C $SHA1N_PROFILE_HOME submodule update --init --recursive'
 alias reload!='for f in $SHA1N_PROFILE_HOME/load.zsh $SHA1N_PROFILE_HOME/include/*(.) $SHA1N_PROFILE_HOME/scripts/lib.zsh; do [[ $f == *.zwc ]] && continue; zcompile $f 2>/dev/null; done; source $HOME/.zshrc'
 #
 # directory shortcuts
