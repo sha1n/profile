@@ -1,5 +1,6 @@
 ## Commits
-- Omit `Co-Authored-By: Claude ...` trailers on all new commits. Preserve only if already present when rebasing.
+- Use Conventional Commits: `type(scope): summary` (feat, fix, chore, docs, refactor, test, …).
+- Don't describe tests in commit messages, UNLESS the commit is entirely about testing.
 
 ## Session Specs & Plans
 - Never `git add` or commit specs or plans under `docs/superpowers/` (the superpowers skill's scratch location), UNLESS the project has explicit rules allowing it or the user explicitly requests it. Specs and plans stored elsewhere are fine to commit.
