@@ -76,3 +76,5 @@ vendor/
 .worktree/
 
 docs/superpowers/
+
+**/.claude/.cc-writes/
