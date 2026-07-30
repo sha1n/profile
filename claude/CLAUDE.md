@@ -22,3 +22,11 @@
 
 ## Development Workflow
 - RED/GREEN/REFACTOR TDD cycle — bug fixes and features always start with failing tests that cover all specs. Production code is written against failing tests.
+
+## Working Notes
+- Detailed working practices not needed every session — verifying ground truth over subagent/IDE claims, delegating coding to subagents, mandating foreground verification in dispatch prompts — live in `~/.claude/agent-workflow-notes.md`. Consult it when orchestrating subagents or verifying completion.
+
+## Code Discovery
+- "Graph first for any code exploration" is too broad. Grep/Glob/Read are the right tool for non-code artifacts, aggregate measurement (counts, LOC), git history, and a literal string that is not a symbol reference — and skip discovery entirely when the structure is already established in the conversation or the file's path is already known.
+- The graph is a cache that can silently lag the tree, and no tool reports it — `index_status` reads live git, so a stale index still looks fresh. Never treat graph *absence* as evidence: `no callers` or `dead code` needs a Grep or a file read to confirm. `index_repository` is the only reliable in-session refresh, and projects outside the session's cwd get no auto-sync at all.
+
