@@ -21,7 +21,7 @@
 - Where that doesn't apply (no harness, docs/config-only changes, throwaway spikes), say so explicitly and state how the change was verified instead.
 
 ## Working Notes
-- Detailed working practices not needed every session — verifying ground truth over subagent/IDE claims, delegating coding to subagents, mandating foreground verification in dispatch prompts, code-discovery tactics when a codebase graph is available — live in `~/.claude/agent-workflow-notes.md`. Consult it when orchestrating subagents, exploring an unfamiliar codebase, or verifying completion.
+- Detailed working practices not needed every session — verifying ground truth over subagent/IDE claims, delegating coding to subagents, mandating foreground verification in dispatch prompts, code-discovery tactics when a codebase graph is available — live in `~/.agents/agent-workflow-notes.md`. Consult it when orchestrating subagents, exploring an unfamiliar codebase, or verifying completion.
 
 ## Communication
 Keep responses focused, brief, and concise. Keep disclaimers and caveats short, and spend most of the response on the main answer. When asked to explain something, give a high-level summary unless an in-depth explanation is specifically requested.
