@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents (Claude Code, Codex, Gemini, etc.) when working with code in this repository.
 
 ## Repository Overview
 
@@ -24,7 +24,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 - **`scripts/`** — Executable tools, added to `$PATH` via `include/exports`. Any file here is a CLI command.
   - `lib.zsh` — Shared library (logging, tree search) sourced by functions and install script
 - **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live)
-- **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks `~/.claude/CLAUDE.md` to this file. If `~/.claude/CLAUDE.md` already exists, install prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
+- **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks agent configuration files (e.g. `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`) to this file. If a target already exists, the script prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
 - **`zsh-plugins/`, `zsh-theme/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
 
