@@ -2,6 +2,8 @@
 
 This file provides guidance to AI coding agents (Claude Code, Codex, Gemini, etc.) when working with code in this repository.
 
+`CLAUDE.md` at the repo root is a symlink to this file — edit `AGENTS.md`, never replace the symlink.
+
 ## Repository Overview
 
 Personal Zsh configuration repository: shell environment, dotfiles, aliases, functions, and utility scripts. Designed to bootstrap a consistent dev environment on new machines via `./install.sh`.
@@ -13,17 +15,18 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 2. `load.zsh` orchestrates everything:
    - Locale, zsh options, `path-ethic` plugin, theme (synchronous — needed at startup)
    - Sources all `include/` files: exports, aliases, functions, keybindings, completions, history, prompt
-   - **Deferred plugins** (via `zsh-defer`, interactive sessions only): `zsh-history-substring-search`, `zsh-autosuggestions`, `zsh-syntax-highlighting` — these load after the prompt appears
+   - **Deferred plugins** (via `zsh-defer`, interactive sessions only): `zsh-history-substring-search`, `zsh-autosuggestions`, `fzf-tab`, `zsh-syntax-highlighting` — these load after the prompt appears
    - **Non-interactive fallback**: deferred plugins load synchronously when `[[ ! -o interactive ]]` (e.g., tests)
    - **`zsh-syntax-highlighting` MUST be loaded LAST** (after all other plugins and keybindings, even when deferred)
    - **`fpath` must include `zsh-completions/src` BEFORE `autoload`**
+   - **`fzf-tab` must load AFTER `compinit`** (`include/completions`) and before `zsh-syntax-highlighting`
    - **History-substring-search keybindings** are deferred in `load.zsh` (not in `include/keybindings`) because they depend on the deferred plugin
 
 ### Key Directories
 - **`include/`** — Modular shell config files sourced by `load.zsh`
 - **`scripts/`** — Executable tools, added to `$PATH` via `include/exports`. Any file here is a CLI command.
   - `lib.zsh` — Shared library (logging, tree search) sourced by functions and install script
-- **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live)
+- **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live). The repo has no `.gitignore` of its own — ignore rules go in `dotfiles/.gitignore_global`
 - **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks agent configuration files (e.g. `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`) to this file. If a target already exists, the script prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
 - **`zsh-plugins/`, `zsh-theme/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
@@ -64,7 +67,8 @@ CI runs on **ubuntu-latest** and **macos-latest** (GitHub Actions, `.github/work
 - **Logging**: `__profile_log_{error,warn,info,success}` from `scripts/lib.zsh`
 - **Tree search**: `__profile_search_ancestor_tree <filename>` walks up from `$PWD` to `/` looking for a file
 - **Private functions**: Prefix with `__profile_` to indicate internal use
-- **Public functions** in `include/functions` are user-facing shell commands (e.g., `start`, `jest`, `alias_last`)
+- **Public functions** in `include/functions` are user-facing shell commands (e.g., `start`, `jest`, `alias_last`, `wt`)
+- **Worktrees**: `wt <branch>` / `wt_rm <branch>` create and remove worktrees under `<repo-root>/.worktree/<branch>`
 
 ### The `start()` Pattern
 The `start` function searches ancestor directories for a `.start` file and sources it. This is a convention for project-specific environment setup.
