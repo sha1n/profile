@@ -5,9 +5,18 @@
 - Surface design smells, tech debt, and risky shortcuts instead of silently working around them.
 
 ## Code Comments
-- Add a comment only when it earns its place: it aids maintainability, records non-obvious intent, or prevents a likely error. Don't restate what the code already says.
-- Keep comments clear and concise — no long narratives.
-- Write comments that hold true against the codebase, not the current session: never reference this conversation, recent changes, or transient context. A comment must still make sense to someone reading the code cold.
+Default to no comment; the burden is on adding one. Add one only for non-obvious intent, a constraint invisible in the code, or a likely trap — never to restate the code (`// increment the counter` above `counter++`). One or two sentences, no narratives.
+
+A comment must still read true after the file is reordered and reformatted, to someone with no access to this conversation, the diff, or the history. Never anchor one to:
+- line numbers or positions — `// see line 42`, `foo.ts:120`
+- position words — `above`, `below`, `the check that follows`
+- another module's private internals or unexported symbols
+- versions, dates, ticket/PR numbers, "as of" claims
+- the change itself — `// now uses X instead of Y`, `// added to fix`
+
+Pointing outward is fine when the target is a stable contract (exported symbol, module path, documented behavior), best when it warns of real coupling — "must stay in sync with `X`".
+
+Public-interface doc comments (JSDoc, docstrings, godoc) are documentation: expected on exported surfaces, exempt from the default, anchoring rules still apply. When an edit falsifies a comment, fix or delete it in the same change.
 
 ## Commits
 - Use Conventional Commits: `type(scope): summary` (feat, fix, chore, docs, refactor, test, …).
