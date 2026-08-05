@@ -74,6 +74,7 @@ vendor/
 .research/
 .benchmarks/
 .worktree/
+.acdc/
 
 docs/superpowers/
 
