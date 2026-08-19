@@ -75,7 +75,7 @@ vendor/
 .benchmarks/
 .worktree/
 .acdc/
-
+.superpowers/
 docs/superpowers/
 
 **/.claude/.cc-writes/
