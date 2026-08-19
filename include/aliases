@@ -79,12 +79,6 @@ alias yc='y run clean'
 alias yl='yarn run lint'
 alias yr='yi && yc && yb'
 alias rm_node_modules='find . -type d -name node_modules -exec rm -rf {} +'
-# vagrant
-alias vu='vagrant up'
-alias vh='vagrant halt'
-# docker 
-alias dcc='docker kill $(docker ps -q) && docker rm -vf $(docker ps -qa)'
-alias dvm='source dvm.sh'
 # kubectl
 alias k='kubectl'
 alias ke='kubectl get events --sort-by=".lastTimestamp"'
