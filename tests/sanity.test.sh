@@ -68,7 +68,6 @@ function test_agents_global_linked() {
   # fresh install (empty sandbox HOME) symlinks ~/.claude/CLAUDE.md to the profile
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
-  assert_equal "$(readlink "$HOME/.gemini/GEMINI.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
 function test_agents_global_idempotent() {
@@ -79,58 +78,50 @@ function test_agents_global_idempotent() {
   assert_equal "$?" "0"
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
-  assert_equal "$(readlink "$HOME/.gemini/GEMINI.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
 function test_agents_global_keep_existing() {
   test_case_title
 
   # existing file + 'n' answer -> keep the user's own file untouched
-  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md" "$HOME/.gemini/GEMINI.md"
+  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md"
   print "KEEP MY OWN RULES" >"$HOME/.claude/CLAUDE.md"
   print "KEEP CODEX RULES" >"$HOME/.codex/AGENTS.md"
-  print "KEEP GEMINI RULES" >"$HOME/.gemini/GEMINI.md"
 
-  print "n\nn\nn\n" | install_agents_global >/dev/null 2>&1
+  print "n\nn\n" | install_agents_global >/dev/null 2>&1
 
   assert_empty "$(readlink "$HOME/.claude/CLAUDE.md" 2>/dev/null)"
   assert_contains "$(cat "$HOME/.claude/CLAUDE.md")" "KEEP MY OWN RULES"
   assert_empty "$(readlink "$HOME/.codex/AGENTS.md" 2>/dev/null)"
   assert_contains "$(cat "$HOME/.codex/AGENTS.md")" "KEEP CODEX RULES"
-  assert_empty "$(readlink "$HOME/.gemini/GEMINI.md" 2>/dev/null)"
-  assert_contains "$(cat "$HOME/.gemini/GEMINI.md")" "KEEP GEMINI RULES"
 }
 
 function test_agents_global_replace_existing() {
   test_case_title
 
   # existing file + 'Y' answer -> delete it and link to the profile
-  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md" "$HOME/.gemini/GEMINI.md"
+  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md"
   print "OLD CONTENT" >"$HOME/.claude/CLAUDE.md"
   print "OLD CONTENT" >"$HOME/.codex/AGENTS.md"
-  print "OLD CONTENT" >"$HOME/.gemini/GEMINI.md"
 
-  print "Y\nY\nY\n" | install_agents_global >/dev/null 2>&1
+  print "Y\nY\n" | install_agents_global >/dev/null 2>&1
 
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
-  assert_equal "$(readlink "$HOME/.gemini/GEMINI.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
 function test_agents_global_default_replaces() {
   test_case_title
 
   # existing file + empty answer (Enter) -> default is Yes, so replace
-  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md" "$HOME/.gemini/GEMINI.md"
+  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md"
   print "OLD CONTENT" >"$HOME/.claude/CLAUDE.md"
   print "OLD CONTENT" >"$HOME/.codex/AGENTS.md"
-  print "OLD CONTENT" >"$HOME/.gemini/GEMINI.md"
 
-  print "\n\n\n" | install_agents_global >/dev/null 2>&1
+  print "\n\n" | install_agents_global >/dev/null 2>&1
 
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
-  assert_equal "$(readlink "$HOME/.gemini/GEMINI.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
 install_profile

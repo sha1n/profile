@@ -5,7 +5,7 @@ source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 source "$SHA1N_PROFILE_HOME/include/exports"
 
 dotzshrc="$HOME/.zshrc"
-agent_global_configs=("$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md" "$HOME/.gemini/GEMINI.md")
+agent_global_configs=("$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md")
 dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
 dirs=("$HOME/.local/bin" "$CODE/w")
 

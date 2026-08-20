@@ -27,7 +27,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 - **`scripts/`** — Executable tools, added to `$PATH` via `include/exports`. Any file here is a CLI command.
   - `lib.zsh` — Shared library (logging, tree search) sourced by functions and install script
 - **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live). The repo has no `.gitignore` of its own — ignore rules go in `dotfiles/.gitignore_global`
-- **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks agent configuration files (e.g. `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`) to this file. If a target already exists, the script prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
+- **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks agent configuration files (e.g. `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) to this file. If a target already exists, the script prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
 - **`zsh-plugins/`, `zsh-theme/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
 
