@@ -49,6 +49,7 @@ alias pushf='git push --force-with-lease origin $(git branch --show-current)'
 alias branch='git branch'
 alias checkout='git checkout'
 alias gc_branches='git branch | grep -v "^* $(git branch --show-current)$" | xargs git branch -D'
+alias gc_worktrees="git worktree list --porcelain | awk '/^worktree / { if (++count > 1) print substr(\$0, 10) }' | xargs -I {} git worktree remove '{}'"
 alias sync_submodules='git submodule update --init --recursive'
 # gh
 alias pr='gh pr create'
