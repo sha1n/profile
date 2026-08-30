@@ -338,3 +338,117 @@ function wt_rm() {
 
   __profile_log_success "branch '$branch' deleted"
 }
+
+#
+# Private helper that applies the Claude Code log name rule: every character
+# that is not a letter or a digit becomes '-'. Claude Code applies it to both
+# the project path and the MCP server name.
+#
+function __profile_claude_mcp_slug() {
+  echo "${1//[^a-zA-Z0-9]/-}"
+}
+
+#
+# Private helper that resolves the Claude Code log directory of a project
+# directory. Claude Code names the directory after the absolute project path.
+#
+function __profile_claude_mcp_log_dir() {
+  local root="${CLAUDE_MCP_LOG_ROOT:-$HOME/Library/Caches/claude-cli-nodejs}"
+
+  echo "$root/$(__profile_claude_mcp_slug "${1:a}")"
+}
+
+#
+# Private helper that resolves the log directory of one MCP server. A plugin
+# server has a name such as 'plugin:sha1n-corpus:acdc-corpus', which Claude
+# Code writes as 'mcp-logs-plugin-sha1n-corpus-acdc-corpus'. Both the server
+# name and the directory form are accepted. Prints nothing and returns 1 when
+# no directory matches.
+#
+function __profile_claude_mcp_server_dir() {
+  local dir="$1" server="$2"
+  local -a candidates=("$dir/mcp-logs-$server" "$dir/mcp-logs-$(__profile_claude_mcp_slug "$server")")
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -d "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+#
+# Shows the stderr log that Claude Code captures for a stdio MCP server.
+# Usage: claude_mcp_logs [-a] [-d] [-n] [-C <project-dir>] <server-name>
+#   -a  read every session log, not only the newest
+#   -d  include the Claude Code connection lines
+#   -n  print the current log and exit, instead of following it
+#   -C  read the logs of another project directory (default: $PWD)
+# Call it with no server name to list the servers that have logs.
+#
+function claude_mcp_logs() {
+  local usage="Usage: claude_mcp_logs [-a] [-d] [-n] [-C <project-dir>] <server-name>"
+  local project_dir="$PWD"
+  local read_all=0 show_debug=0 no_follow=0
+
+  if ! command -v jq > /dev/null; then
+    __profile_log_error "jq is not installed"
+    return 1
+  fi
+
+  local OPTIND opt
+  while getopts "adnC:" opt; do
+    case "$opt" in
+      a) read_all=1 ;;
+      d) show_debug=1 ;;
+      n) no_follow=1 ;;
+      C) project_dir="$OPTARG" ;;
+      *) echo "$usage" >&2; return 1 ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  local dir
+  dir=$(__profile_claude_mcp_log_dir "$project_dir")
+  if [[ ! -d "$dir" ]]; then
+    __profile_log_error "no Claude Code logs for ${project_dir:a}"
+    return 1
+  fi
+
+  local server="$1"
+  local server_dir=""
+  [[ -n "$server" ]] && server_dir=$(__profile_claude_mcp_server_dir "$dir" "$server")
+
+  if [[ -z "$server_dir" ]]; then
+    [[ -n "$server" ]] && __profile_log_error "no logs for MCP server '$server'"
+    echo "Servers with logs in ${project_dir:a}:" >&2
+    print -l "$dir"/mcp-logs-*(/N:t) | sed 's/^mcp-logs-/  /' >&2
+    return 1
+  fi
+
+  local -a files
+  if (( read_all )); then
+    files=("$server_dir"/*.jsonl(N))
+  else
+    files=("$server_dir"/*.jsonl(Nom[1]))
+  fi
+
+  if (( ${#files} == 0 )); then
+    __profile_log_error "no log files yet for MCP server '$server'"
+    return 1
+  fi
+
+  local filter='select(.error) | .error'
+  (( show_debug )) && filter='.error // .debug'
+
+  local -a tail_opts=(-q -n 200)
+  (( no_follow )) || tail_opts+=(-F)
+
+  # -R with fromjson? drops any line that is not complete JSON, so a partial
+  # write from 'tail -F' cannot break the stream.
+  tail $tail_opts "${files[@]}" \
+    | jq -Rr --unbuffered "fromjson? | $filter | sub(\"^Server stderr: \"; \"\")"
+}

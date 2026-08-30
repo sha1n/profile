@@ -16,3 +16,22 @@ autoload -U +X bashcompinit && bashcompinit
 
 zstyle ':fzf-tab:*' switch-group ',' '.'
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls -1 --color=always $realpath'
+
+#
+# Completes the MCP server names that have logs in the current project.
+#
+function _claude_mcp_logs() {
+  local -a servers
+  local dir
+  dir=$(__profile_claude_mcp_log_dir "$PWD")
+  [[ -d "$dir" ]] && servers=("$dir"/mcp-logs-*(/N:t))
+  servers=(${servers#mcp-logs-})
+
+  _arguments \
+    '-a[read every session log, not only the newest]' \
+    '-d[include the Claude Code connection lines]' \
+    '-n[print the current log and exit, instead of following it]' \
+    '-C[project directory]:project directory:_files -/' \
+    "1:MCP server:(${servers})"
+}
+compdef _claude_mcp_logs claude_mcp_logs
