@@ -71,6 +71,42 @@ function test_claude_mcp_log_dir_slug() {
   assert_equal "$dir" "/log-root/-Users-x-code-my-proj"
 }
 
+function test_claude_mcp_log_dir_default_root_macos() {
+  test_case_title
+
+  local dir
+  dir=$(unset CLAUDE_MCP_LOG_ROOT; OSTYPE=darwin25.0; __profile_claude_mcp_log_dir "/proj")
+
+  assert_equal "$dir" "$HOME/Library/Caches/claude-cli-nodejs/-proj"
+}
+
+function test_claude_mcp_log_dir_default_root_linux() {
+  test_case_title
+
+  local dir
+  dir=$(unset CLAUDE_MCP_LOG_ROOT XDG_CACHE_HOME; OSTYPE=linux-gnu; __profile_claude_mcp_log_dir "/proj")
+
+  assert_equal "$dir" "$HOME/.cache/claude-cli-nodejs/-proj"
+}
+
+function test_claude_mcp_log_dir_default_root_linux_xdg() {
+  test_case_title
+
+  local dir
+  dir=$(unset CLAUDE_MCP_LOG_ROOT; XDG_CACHE_HOME=/xdg-cache; OSTYPE=linux-gnu; __profile_claude_mcp_log_dir "/proj")
+
+  assert_equal "$dir" "/xdg-cache/claude-cli-nodejs/-proj"
+}
+
+function test_claude_mcp_log_dir_env_root_wins_over_platform() {
+  test_case_title
+
+  local dir
+  dir=$(OSTYPE=linux-gnu; CLAUDE_MCP_LOG_ROOT=/log-root __profile_claude_mcp_log_dir "/proj")
+
+  assert_equal "$dir" "/log-root/-proj"
+}
+
 function test_claude_mcp_logs_unknown_project() {
   test_case_title
   mkdir -p "$HOME/no-logs-here"
@@ -192,6 +228,10 @@ function test_claude_mcp_logs_sanitized_server_name() {
 
 setup
 run_test test_claude_mcp_log_dir_slug
+run_test test_claude_mcp_log_dir_default_root_macos
+run_test test_claude_mcp_log_dir_default_root_linux
+run_test test_claude_mcp_log_dir_default_root_linux_xdg
+run_test test_claude_mcp_log_dir_env_root_wins_over_platform
 run_test test_claude_mcp_logs_unknown_project
 run_test test_claude_mcp_logs_no_args_lists_servers
 run_test test_claude_mcp_logs_unknown_server

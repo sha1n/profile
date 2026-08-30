@@ -349,11 +349,24 @@ function __profile_claude_mcp_slug() {
 }
 
 #
+# Private helper that resolves the directory in which Claude Code keeps its
+# logs. Claude Code writes to the platform cache directory, which is not the
+# same on macOS and on Linux.
+#
+function __profile_claude_mcp_default_log_root() {
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "$HOME/Library/Caches/claude-cli-nodejs"
+  else
+    echo "${XDG_CACHE_HOME:-$HOME/.cache}/claude-cli-nodejs"
+  fi
+}
+
+#
 # Private helper that resolves the Claude Code log directory of a project
 # directory. Claude Code names the directory after the absolute project path.
 #
 function __profile_claude_mcp_log_dir() {
-  local root="${CLAUDE_MCP_LOG_ROOT:-$HOME/Library/Caches/claude-cli-nodejs}"
+  local root="${CLAUDE_MCP_LOG_ROOT:-$(__profile_claude_mcp_default_log_root)}"
 
   echo "$root/$(__profile_claude_mcp_slug "${1:a}")"
 }
