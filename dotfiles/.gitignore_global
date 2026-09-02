@@ -71,6 +71,7 @@ vendor/
 # Conversational LLM agent reviews directory
 .reviews/
 .plans/
+.tasks/
 .research/
 .benchmarks/
 .worktree/
