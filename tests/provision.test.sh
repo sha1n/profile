@@ -270,6 +270,14 @@ function test_kubectl_alias_absent_without_kubectl() {
   assert_not_contains "$out" "kubectl"
 }
 
+function test_bazel_integration_removed() {
+  test_case_title
+
+  assert_empty "$(grep -rn 'BAZEL_' "$SHA1N_PROFILE_HOME/include/" 2>/dev/null)"
+  assert_empty "$(grep -n 'bazel_with_disk_cache_guard' "$SHA1N_PROFILE_HOME/include/functions" 2>/dev/null)"
+  assert_equal "$(test -e "$SHA1N_PROFILE_HOME/dotfiles/.bazelrc" && echo present || echo absent)" "absent"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -293,5 +301,6 @@ run_test test_solarized_linked_where_vim_looks
 run_test test_nvm_sourced_when_present
 run_test test_toolchain_aliases_are_guarded
 run_test test_kubectl_alias_absent_without_kubectl
+run_test test_bazel_integration_removed
 finish_tests
 cleanup
