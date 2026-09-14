@@ -486,6 +486,70 @@ function test_provisioning_requires_homebrew() {
   assert_contains "$out" "--no-provision"
 }
 
+function test_install_trusts_taps_before_bundling() {
+  test_case_title
+
+  # The provisioning path is otherwise unexercised: nothing asserts that
+  # main() actually reaches it, nor that trust precedes bundle install.
+  # Sourced explicitly rather than Darwin-gated: install.sh does not source
+  # provision/ off macOS, but the logic under test is platform-independent.
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+
+  local stub_dir="$HOME/stub-bin"
+  local log="$HOME/brew-calls.log"
+  mkdir -p "$stub_dir"
+  rm -f "$log"
+  cat >"$stub_dir/brew" <<STUB
+#!/usr/bin/env zsh
+print -r -- "\$@" >>"$log"
+# Drain stdin so the composing pipeline does not get EPIPE.
+[[ "\$1" == "bundle" ]] && cat >/dev/null
+exit 0
+STUB
+  chmod +x "$stub_dir/brew"
+
+  PROFILE_BREW="$stub_dir/brew" __profile_provision_install dev-go >/dev/null 2>&1
+  assert_equal "$?" "0"
+
+  assert_file_exists "$log"
+  local calls
+  calls="$(cat "$log")"
+  assert_contains "$calls" "trust sha1n/tap"
+  assert_contains "$calls" "bundle install"
+
+  # Ordering is load-bearing: Homebrew refuses to load a formula from an
+  # untrusted tap, so a bundle install before trust fails on a fresh machine.
+  local trust_line bundle_line
+  trust_line="$(grep -n 'trust sha1n/tap' "$log" | head -1 | cut -d: -f1)"
+  bundle_line="$(grep -n 'bundle install' "$log" | head -1 | cut -d: -f1)"
+  assert_equal "$(( trust_line < bundle_line ))" "1"
+}
+
+function test_main_reaches_provisioning_on_darwin() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  # Guards against the provisioning step being dropped from main() unnoticed:
+  # asserting only on absence (as --no-provision does) passes either way.
+  local stub_dir="$HOME/stub-bin2"
+  mkdir -p "$stub_dir"
+  cat >"$stub_dir/brew" <<'STUB'
+#!/usr/bin/env zsh
+[[ "$1" == "bundle" ]] && cat >/dev/null
+exit 0
+STUB
+  chmod +x "$stub_dir/brew"
+
+  local out
+  out="$(PROFILE_BREW="$stub_dir/brew" zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --yes 2>&1)"
+  assert_equal "$?" "0"
+  assert_contains "$out" "provisioning packages"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -523,5 +587,7 @@ run_test test_install_is_idempotent
 run_test test_linux_suite_unaffected
 run_test test_declared_taps_are_trusted_before_install
 run_test test_provisioning_requires_homebrew
+run_test test_install_trusts_taps_before_bundling
+run_test test_main_reaches_provisioning_on_darwin
 finish_tests
 cleanup

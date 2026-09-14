@@ -5,6 +5,10 @@
 
 __PROFILE_PROVISION_DIR="${${(%):-%x}:a:h}"
 
+# Indirection so tests can exercise the install path against a stub instead of
+# mutating the developer's real machine. Never set this outside tests.
+: "${PROFILE_BREW:=brew}"
+
 #
 # Names of the selectable dev-* layers, one per line. essentials is implicit and
 # never listed. Discovery is a glob so adding a layer needs no code change.
@@ -50,14 +54,14 @@ function __profile_provision_compose() {
 # check is permanently red.
 #
 function __profile_provision_check() {
-  __profile_provision_compose "$@" | brew bundle check --no-upgrade --verbose --file=-
+  __profile_provision_compose "$@" | "$PROFILE_BREW" bundle check --no-upgrade --verbose --file=-
 }
 
 #
 # As __profile_provision_check, but outdated packages count as drift.
 #
 function __profile_provision_check_upgrades() {
-  __profile_provision_compose "$@" | brew bundle check --verbose --file=-
+  __profile_provision_compose "$@" | "$PROFILE_BREW" bundle check --verbose --file=-
 }
 
 #
@@ -89,7 +93,7 @@ function __profile_provision_trust_taps() {
     # Granting a tap permission to have its Ruby executed is security-relevant;
     # say so rather than doing it silently.
     __profile_log_info "trusting tap: ${tap}"
-    if ! brew trust "$tap" 2>&1; then
+    if ! "$PROFILE_BREW" trust "$tap" 2>&1; then
       __profile_log_error "failed to trust tap '${tap}'"
       return 1
     fi
@@ -103,5 +107,5 @@ function __profile_provision_trust_taps() {
 #
 function __profile_provision_install() {
   __profile_provision_trust_taps "$@" || return 1
-  __profile_provision_compose "$@" | brew bundle install --file=-
+  __profile_provision_compose "$@" | "$PROFILE_BREW" bundle install --file=-
 }
