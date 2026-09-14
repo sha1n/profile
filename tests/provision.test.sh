@@ -308,6 +308,73 @@ function test_export_openjdk_formula_requires_an_argument() {
   assert_equal "$?" "1"
 }
 
+function test_every_declared_entry_resolves() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  # Catches undeclared taps (§6.3): installed state masks unresolvable names,
+  # so `brew bundle check` passes locally and would fail on a fresh machine.
+  local out
+  out="$(__profile_provision_compose $(__profile_provision_available_layers) 2>&1 | brew bundle list --file=- 2>&1)"
+  assert_equal "$?" "0"
+  assert_not_contains "$out" "No available formula"
+  assert_not_contains "$out" "is unavailable"
+}
+
+function test_one_owning_layer_per_package() {
+  test_case_title
+
+  # Scoped to the six known files so a stray `brew bundle dump` artifact in
+  # provision/ cannot trip this.
+  local dupes
+  dupes="$(grep -hE '^(brew|cask|vscode) ' \
+    "$SHA1N_PROFILE_HOME/provision/essentials.Brewfile" \
+    "$SHA1N_PROFILE_HOME"/provision/dev-*.Brewfile \
+    | sort | uniq -d)"
+  assert_empty "$dupes"
+}
+
+function test_essentials_satisfies_shell_hard_requirements() {
+  test_case_title
+
+  # Regression guard for §3.2: profile assumed ~20 tools it never installed.
+  local essentials="$SHA1N_PROFILE_HOME/provision/essentials.Brewfile"
+  local required=(git coreutils make fzf neovim jq git-lfs git-filter-repo gh glab bat ripgrep tree)
+  local tool
+  for tool in "${required[@]}"; do
+    assert_contains "$(cat "$essentials")" "brew \"${tool}\""
+  done
+  assert_contains "$(cat "$essentials")" 'cask "font-menlo-for-powerline"'
+}
+
+function test_install_is_idempotent() {
+  test_case_title
+
+  # Only meetable once --yes exists (§6.2).
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --no-provision --yes >/dev/null 2>&1
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --no-provision --yes >/dev/null 2>&1
+  assert_equal "$?" "0"
+}
+
+function test_linux_suite_unaffected() {
+  test_case_title
+
+  if [[ "$OSTYPE" == darwin* ]]; then
+    echo "  skipped on darwin"
+    return 0
+  fi
+
+  # provision/ must never be sourced on Linux.
+  local out
+  out="$(zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --yes 2>&1)"
+  assert_equal "$?" "0"
+  assert_not_contains "$out" "provisioning packages"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -335,5 +402,10 @@ run_test test_bazel_integration_removed
 run_test test_export_openjdk_formula_resolves_a_cask_jdk
 run_test test_export_openjdk_formula_rejects_missing_version
 run_test test_export_openjdk_formula_requires_an_argument
+run_test test_every_declared_entry_resolves
+run_test test_one_owning_layer_per_package
+run_test test_essentials_satisfies_shell_hard_requirements
+run_test test_install_is_idempotent
+run_test test_linux_suite_unaffected
 finish_tests
 cleanup

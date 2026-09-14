@@ -80,3 +80,5 @@ vendor/
 docs/superpowers/
 
 **/.claude/.cc-writes/
+
+provision/*.dump.Brewfile

@@ -39,3 +39,16 @@ jobs:
 
       - name: Run Tests
         run: make test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install shellcheck and shfmt
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck shfmt
+      - name: shellcheck
+        run: shellcheck --shell=bash --severity=warning install.sh update_dotfiles.sh || true
+      - name: shfmt
+        run: shfmt -d -i 2 -ci install.sh update_dotfiles.sh || true
