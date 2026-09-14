@@ -28,13 +28,30 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
   - `lib.zsh` — Shared library (logging, tree search) sourced by functions and install script
 - **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live). The repo has no `.gitignore` of its own — ignore rules go in `dotfiles/.gitignore_global`
 - **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks agent configuration files (e.g. `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) to this file. If a target already exists, the script prompts `[n/Y]` before replacing it (default Yes); an existing correct link is left untouched
+- **`provision/`** — **Darwin-only.** Homebrew Bundle manifests plus `provision.zsh`.
+  Skipped entirely on Linux; `install.sh` never sources it off macOS. This directory
+  is the platform boundary that keeps the rest of the repo dual-platform.
+  - Six layers: `essentials.Brewfile` (always applied) and `dev-{go,java,python,node,ops}.Brewfile`.
+  - **Layer rule (D10):** a package belongs in `essentials` only if it is
+    language-agnostic **and** dependency-light. Everything else goes in a `dev-*` layer.
+  - **Invariant:** each package has exactly one owning layer. Enforced by
+    `tests/provision.test.sh`.
+  - Layers are discovered by glob (`dev-*.Brewfile`) — adding one is a single new
+    file with no code change.
+  - All third-party taps are declared in `essentials.Brewfile`, not beside their
+    formulae, because `brew bundle cleanup --force` resets the trust store to
+    whatever the composed file declares.
 - **`zsh-plugins/`, `zsh-theme/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
 
 ## Commands
 
 ```bash
-./install.sh              # Full setup: submodules, symlinks, dirs, .zshrc, neovim, zwc compilation
+./install.sh                          # Dotfiles + shell config; on macOS also the essentials layer
+./install.sh --profile dev-go         # Add a provisioning layer (repeatable, comma form accepted)
+./install.sh --check                  # Report drift, mutate nothing. Exit 0 = clean
+./install.sh --compose --profile dev-go  # Print the effective Brewfile to stdout
+./install.sh --yes                    # Non-interactive
 make test                 # Run tests (also: ./tests/run_tests.sh)
 make update_submodules    # Update all git submodules
 make compile              # Compile zsh files to .zwc bytecode
@@ -95,3 +112,6 @@ Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` 
 
 ### Cross-Platform
 Changes must work on both macOS and Linux. Use platform checks (`$OSTYPE`) when behavior differs (see `__profile_git_file_timestamp` for an example).
+
+Provisioning is the one exception and is fenced into `provision/`. Anything outside
+that directory must work on both macOS and Linux.

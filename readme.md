@@ -26,10 +26,20 @@ shell environment.
 # Installation
 
 ```bash
-git clone git@github.com:sha1n/profile.git
+git clone https://github.com/sha1n/profile.git
 git -C profile submodule update --init
 
 profile/install.sh
+```
+
+```bash
+./install.sh                          # Dotfiles + shell config; on macOS also the essentials layer
+./install.sh --profile dev-go         # Add a provisioning layer (repeatable, comma form accepted)
+./install.sh --check                  # Report drift, mutate nothing. Exit 0 = clean
+./install.sh --compose --profile dev-go  # Print the effective Brewfile to stdout
+./install.sh --yes                    # Non-interactive
+./install.sh --no-provision           # Skip the Homebrew step
+./install.sh --help                   # Usage
 ```
 
 The installation script does two things:
@@ -39,6 +49,38 @@ The installation script does two things:
    - If the file doesn't exist, it creates it
    - If `~/.zshrc` exists and a file named `load.zsh` is already sourced from it, aborts
 
+
+## Provisioning (macOS only)
+
+`install.sh` applies Homebrew Bundle layers from `provision/`. The `essentials`
+layer is always applied; `--profile` adds toolchain layers.
+
+### Checking for drift
+
+    ./install.sh --check --profile dev-go
+
+Exit code 0 means everything declared is installed. `--check` passes
+`--no-upgrade`, so *outdated* packages do not count as drift — add `--upgrades`
+if you want version drift reported too.
+
+### Removing undeclared packages
+
+There is no `--cleanup` flag, deliberately. Run it by hand against a **temp file**,
+never a pipe — `brew bundle cleanup` reads the Brewfile from stdin, so the
+confirmation prompt cannot be shown and it exits 1:
+
+    ./install.sh --compose --profile dev-go > /tmp/Brewfile
+    brew bundle cleanup --file=/tmp/Brewfile          # dry run
+    brew bundle cleanup --force --file=/tmp/Brewfile  # apply
+
+> **Warning:** `--force` also **resets the Homebrew trust store** to exactly the
+> taps the composed file declares, revoking trust for any tap it omits.
+
+### Testing limitation
+
+The real test of provisioning is a fresh Mac, and macOS VMs are out of scope. The
+sandboxed-`$HOME` test harness covers dotfile linking, idempotency and manifest
+resolution — it does **not** cover first-run Homebrew installation.
 
 # Update
 Since all external plugins are sourced as git submodules, updating everything that's included in this setup is as simple as pulling the repository recursively. To make this even easier, an alias named `update_profile` is registered to take care of that with a single command.
