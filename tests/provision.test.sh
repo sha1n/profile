@@ -126,6 +126,47 @@ function test_no_provision_skips_homebrew() {
   assert_not_contains "$out" "provisioning packages"
 }
 
+function test_compose_prints_effective_brewfile() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  local out
+  out="$(zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --compose --profile dev-go 2>/dev/null)"
+  assert_equal "$?" "0"
+  assert_contains "$out" 'brew "coreutils"'
+  assert_contains "$out" 'brew "golangci-lint"'
+  assert_not_contains "$out" 'brew "poetry"'
+}
+
+function test_check_is_non_mutating() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  # A fingerprint of installed state must be identical before and after --check.
+  local before after
+  before="$(brew list --formula --versions; brew list --cask --versions)"
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --check >/dev/null 2>&1
+  after="$(brew list --formula --versions; brew list --cask --versions)"
+
+  assert_equal "$before" "$after"
+}
+
+function test_check_does_not_link_dotfiles() {
+  test_case_title
+
+  rm -f "$HOME/.vimrc"
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --check --no-provision >/dev/null 2>&1
+  assert_equal "$(test -e "$HOME/.vimrc" && echo present || echo absent)" "absent"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -136,5 +177,8 @@ run_test test_compose_appends_selected_layers
 run_test test_profile_flag_rejected_on_linux
 run_test test_unknown_layer_rejected_on_darwin
 run_test test_no_provision_skips_homebrew
+run_test test_compose_prints_effective_brewfile
+run_test test_check_is_non_mutating
+run_test test_check_does_not_link_dotfiles
 finish_tests
 cleanup

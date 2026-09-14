@@ -196,6 +196,48 @@ function provision_packages() {
   __profile_provision_install "${PROFILE_LAYERS[@]}"
 }
 
+function check_dotfile_links() {
+  local rc=0
+  local file target
+  for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
+    [[ "$file" == "init.lua" ]] && continue
+    [[ "$file" == "vscode-settings.json" ]] && continue
+    target="$HOME/$file"
+    if [[ "$(readlink "$target" 2>/dev/null)" != "$dotfiles_dir/$file" ]]; then
+      __profile_log_warn "not linked to the profile: $target"
+      rc=1
+    fi
+  done
+
+  if [[ "$(readlink "$HOME/.config/nvim/init.lua" 2>/dev/null)" != "$dotfiles_dir/init.lua" ]]; then
+    __profile_log_warn "not linked to the profile: $HOME/.config/nvim/init.lua"
+    rc=1
+  fi
+
+  return $rc
+}
+
+function run_check() {
+  local rc=0
+
+  if profile_is_darwin && [[ -z "$PROFILE_NO_PROVISION" ]]; then
+    if [[ -n "$PROFILE_CHECK_UPGRADES" ]]; then
+      __profile_provision_check_upgrades "${PROFILE_LAYERS[@]}" || rc=1
+    else
+      __profile_provision_check "${PROFILE_LAYERS[@]}" || rc=1
+    fi
+  fi
+
+  check_dotfile_links || rc=1
+
+  if (( rc == 0 )); then
+    __profile_log_success "no drift detected"
+  else
+    __profile_log_warn "drift detected"
+  fi
+  return $rc
+}
+
 function compile_bytecode() {
   __profile_log_info "compiling zsh files to bytecode..."
   for f in "$SHA1N_PROFILE_HOME"/load.zsh "$SHA1N_PROFILE_HOME"/include/*(.) "$SHA1N_PROFILE_HOME"/scripts/lib.zsh; do
@@ -251,6 +293,20 @@ if profile_is_darwin; then
 elif (( ${#PROFILE_LAYERS} > 0 )) || [[ -n "$PROFILE_COMPOSE_ONLY" ]]; then
   __profile_log_error "--profile and --compose are Darwin-only; provisioning is not supported on this platform"
   return 2 2>/dev/null || exit 2
+fi
+
+# Both short-circuit before main(): they are read-only modes and must never
+# reach the provisioning step main() starts with.
+if [[ -n "$PROFILE_COMPOSE_ONLY" ]]; then
+  __profile_compose_rc=0
+  __profile_provision_compose "${PROFILE_LAYERS[@]}" || __profile_compose_rc=$?
+  return $__profile_compose_rc 2>/dev/null || exit $__profile_compose_rc
+fi
+
+if [[ -n "$PROFILE_CHECK_ONLY" ]]; then
+  __profile_check_rc=0
+  run_check || __profile_check_rc=$?
+  return $__profile_check_rc 2>/dev/null || exit $__profile_check_rc
 fi
 
 __profile_main_rc=0
