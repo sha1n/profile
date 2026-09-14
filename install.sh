@@ -151,15 +151,34 @@ function link_dotfiles() {
 function setup_neovim() {
   __profile_log_info "setting up neovim..."
   local nvim_config_dir="$HOME/.config/nvim"
+  local target="$nvim_config_dir/init.lua"
+  local source="$dotfiles_dir/init.lua"
 
   create_directory "$nvim_config_dir" || __profile_log_error "failed to create '$nvim_config_dir'!"
 
-  if [[ -f "$nvim_config_dir/init.lua" ]]; then
-       __profile_log_warn "the file '$nvim_config_dir/init.lua' already exists. Skipping..."
-  else
-       __profile_log_info "linking init.lua..."
-       ln -s "$dotfiles_dir/init.lua" "$nvim_config_dir/init.lua"
+  if [[ "$(readlink "$target" 2>/dev/null)" == "$source" ]]; then
+    __profile_log_warn "'$target' is already linked to the profile. Skipping..."
+    return 0
   fi
+
+  # A symlink pointing elsewhere is another installer's artifact (historically
+  # ~/code/kickstart.nvim) and is safe to reclaim. A regular file is the user's
+  # own and is never touched.
+  if [[ -L "$target" ]]; then
+    __profile_log_info "relinking init.lua (was: $(readlink "$target"))..."
+    ln -sfn "$source" "$target"
+    return "$?"
+  fi
+
+  if [[ -e "$target" ]]; then
+    __profile_log_warn "'$target' is a regular file, not a link. Leaving it alone."
+    __profile_log_warn "to adopt the profile's config: rm '$target' && ./install.sh"
+    return 0
+  fi
+
+  __profile_log_info "linking init.lua..."
+  ln -s "$source" "$target"
+  return "$?"
 }
 
 function create_directory() {

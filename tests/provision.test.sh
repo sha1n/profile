@@ -167,6 +167,35 @@ function test_check_does_not_link_dotfiles() {
   assert_equal "$(test -e "$HOME/.vimrc" && echo present || echo absent)" "absent"
 }
 
+function test_neovim_relinks_a_foreign_symlink() {
+  test_case_title
+
+  local nvim_dir="$HOME/.config/nvim"
+  local foreign="$HOME/foreign-init.lua"
+  mkdir -p "$nvim_dir"
+  print -r -- "-- not ours" >"$foreign"
+  ln -sfn "$foreign" "$nvim_dir/init.lua"
+
+  PROFILE_ASSUME_YES=1 setup_neovim >/dev/null 2>&1
+
+  assert_equal "$(readlink "$nvim_dir/init.lua")" "$SHA1N_PROFILE_HOME/dotfiles/init.lua"
+}
+
+function test_neovim_preserves_a_real_file() {
+  test_case_title
+
+  local nvim_dir="$HOME/.config/nvim"
+  mkdir -p "$nvim_dir"
+  rm -f "$nvim_dir/init.lua"
+  print -r -- "-- hand written" >"$nvim_dir/init.lua"
+
+  PROFILE_ASSUME_YES=1 setup_neovim >/dev/null 2>&1
+
+  # A regular file is the user's own work; never clobber it silently.
+  assert_empty "$(readlink "$nvim_dir/init.lua" 2>/dev/null)"
+  assert_contains "$(cat "$nvim_dir/init.lua")" "hand written"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -180,5 +209,7 @@ run_test test_no_provision_skips_homebrew
 run_test test_compose_prints_effective_brewfile
 run_test test_check_is_non_mutating
 run_test test_check_does_not_link_dotfiles
+run_test test_neovim_relinks_a_foreign_symlink
+run_test test_neovim_preserves_a_real_file
 finish_tests
 cleanup
