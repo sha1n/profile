@@ -11,7 +11,7 @@ export LSCOLORS=GxFxCxDxBxegedabagaced
 # grep
 export GREP_COLOR='1;35;40'
 
-PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
+PATH="$PATH:$HOME/.local/bin:$HOME/go/bin:$SHA1N_PROFILE_HOME/scripts"
 
 # Backup
 export BACKUP_DST_PATH="/Volumes/Backup/latest"

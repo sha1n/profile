@@ -141,7 +141,7 @@ function link_dotfiles() {
   __profile_log_info "linking dot files..."
 
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
-    if [[ "$file" == "init.lua" || "$file" == "vscode-settings.json" ]]; then
+    if [[ "$file" == "init.lua" || "$file" == "vscode-settings.json" || "$file" == "solarized.vim" ]]; then
       continue
     fi
     link_dotfile "$file" || __profile_log_error "failed to link '$file'!"
@@ -178,6 +178,19 @@ function setup_neovim() {
 
   __profile_log_info "linking init.lua..."
   ln -s "$source" "$target"
+  return "$?"
+}
+
+function setup_vim_colors() {
+  __profile_log_info "setting up vim colorscheme..."
+  local colors_dir="$HOME/.vim/colors"
+  local source="$dotfiles_dir/colors/solarized.vim"
+
+  # dotfiles/ is linked into $HOME by basename, which would land this at
+  # ~/solarized.vim where vim never looks. Linking it into vim's stock
+  # runtimepath keeps dotfiles/.vimrc free of any repo path literal.
+  create_directory "$colors_dir" || return 1
+  ln -sfn "$source" "$colors_dir/solarized.vim"
   return "$?"
 }
 
@@ -252,6 +265,7 @@ function check_dotfile_links() {
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
     [[ "$file" == "init.lua" ]] && continue
     [[ "$file" == "vscode-settings.json" ]] && continue
+    [[ "$file" == "solarized.vim" ]] && continue
     target="$HOME/$file"
     if [[ "$(readlink "$target" 2>/dev/null)" != "$dotfiles_dir/$file" ]]; then
       __profile_log_warn "not linked to the profile: $target"
@@ -313,6 +327,7 @@ function main() {
 
   run_step "agent configs" install_agents_global || return 1
   run_step "neovim" setup_neovim || return 1
+  run_step "vim colors" setup_vim_colors || return 1
   run_step "vscode settings" setup_vscode_settings || return 1
   run_step "bytecode" compile_bytecode || return 1
 

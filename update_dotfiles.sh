@@ -15,7 +15,7 @@ function link_dotfile() {
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
-    if [[ "$file" != ".gitconfig" && "$file" != "init.lua" && "$file" != "vscode-settings.json" ]]; then
+    if [[ "$file" != ".gitconfig" && "$file" != "init.lua" && "$file" != "vscode-settings.json" && "$file" != "solarized.vim" ]]; then
       link_dotfile "$file" && __profile_log_success "ok!" || error "failed!"
     fi
   done
@@ -46,7 +46,19 @@ function setup_vscode_settings() {
   ln -sf "$dotfiles_dir/vscode-settings.json" "$user_dir/settings.json"
 }
 
+function setup_vim_colors() {
+  __profile_log_info "updating vim colorscheme..."
+  local colors_dir="$HOME/.vim/colors"
+
+  if [[ ! -d "$colors_dir" ]]; then
+    mkdir -p "$colors_dir"
+  fi
+
+  ln -sf "$dotfiles_dir/colors/solarized.vim" "$colors_dir/solarized.vim"
+}
+
 link_dotfiles
 setup_neovim
+setup_vim_colors
 setup_vscode_settings
 __profile_log_success "done!"

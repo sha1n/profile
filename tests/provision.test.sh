@@ -215,6 +215,40 @@ function test_vscode_settings_linked_to_application_support() {
   assert_equal "$(readlink "$target")" "$SHA1N_PROFILE_HOME/dotfiles/vscode-settings.json"
 }
 
+function test_go_bin_on_path() {
+  test_case_title
+
+  assert_contains "$PATH" "$HOME/go/bin"
+}
+
+function test_solarized_colorscheme_is_tracked() {
+  test_case_title
+
+  # dotfiles/.vimrc:4 sets `colorscheme solarized`; the file must ship with the repo.
+  assert_file_exists "$SHA1N_PROFILE_HOME/dotfiles/colors/solarized.vim"
+}
+
+function test_solarized_linked_where_vim_looks() {
+  test_case_title
+
+  # dotfiles/ is linked into $HOME by basename, which would put the colorscheme at
+  # ~/solarized.vim where vim never looks. It is linked into ~/.vim/colors instead,
+  # keeping vim's stock runtimepath and no repo path literal in .vimrc.
+  assert_equal "$(readlink "$HOME/.vim/colors/solarized.vim")" "$SHA1N_PROFILE_HOME/dotfiles/colors/solarized.vim"
+  assert_equal "$(test -e "$HOME/solarized.vim" && echo present || echo absent)" "absent"
+}
+
+function test_nvm_sourced_when_present() {
+  test_case_title
+
+  if ! command -v brew >/dev/null 2>&1 || [[ ! -s "$(brew --prefix nvm 2>/dev/null)/nvm.sh" ]]; then
+    echo "  skipped: nvm not installed"
+    return 0
+  fi
+
+  assert_equal "$(type -w nvm | cut -d: -f2 | tr -d ' ')" "function"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -232,5 +266,9 @@ run_test test_neovim_relinks_a_foreign_symlink
 run_test test_neovim_preserves_a_real_file
 run_test test_vscode_settings_not_linked_into_home_root
 run_test test_vscode_settings_linked_to_application_support
+run_test test_go_bin_on_path
+run_test test_solarized_colorscheme_is_tracked
+run_test test_solarized_linked_where_vim_looks
+run_test test_nvm_sourced_when_present
 finish_tests
 cleanup

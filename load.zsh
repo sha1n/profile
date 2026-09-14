@@ -23,6 +23,19 @@ else
   source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 fi
 
+# NVM_DIR is exported in include/exports but nothing sources nvm itself; envy
+# used to append this to ~/.zshrc, which is this repo's file. nvm.sh is slow and
+# only needed interactively, so it follows the deferred-plugin pattern above.
+__profile_nvm_sh="$(brew --prefix nvm 2>/dev/null)/nvm.sh"
+if [[ -s "$__profile_nvm_sh" ]]; then
+  if [[ -o interactive ]]; then
+    zsh-defer source "$__profile_nvm_sh"
+  else
+    source "$__profile_nvm_sh"
+  fi
+fi
+unset __profile_nvm_sh
+
 # theme
 source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
 
