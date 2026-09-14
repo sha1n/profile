@@ -187,6 +187,15 @@ function update_submodules() {
   return "$?"
 }
 
+function profile_is_darwin() {
+  [[ "$OSTYPE" == darwin* ]]
+}
+
+function provision_packages() {
+  __profile_log_info "provisioning packages..."
+  __profile_provision_install "${PROFILE_LAYERS[@]}"
+}
+
 function compile_bytecode() {
   __profile_log_info "compiling zsh files to bytecode..."
   for f in "$SHA1N_PROFILE_HOME"/load.zsh "$SHA1N_PROFILE_HOME"/include/*(.) "$SHA1N_PROFILE_HOME"/scripts/lib.zsh; do
@@ -198,6 +207,10 @@ function compile_bytecode() {
 }
 
 function main() {
+  if profile_is_darwin && [[ -z "$PROFILE_NO_PROVISION" ]]; then
+    run_step "packages" provision_packages || return 1
+  fi
+
   run_step "submodules" update_submodules || return 1
   __profile_log_success "submodules updated successfully"
 
@@ -224,6 +237,20 @@ if (( __profile_parse_rc == 10 )); then
   return 0 2>/dev/null || exit 0
 elif (( __profile_parse_rc != 0 )); then
   return $__profile_parse_rc 2>/dev/null || exit $__profile_parse_rc
+fi
+
+# provision/ is the platform boundary: it is never sourced off Darwin, so the
+# rest of the repo stays dual-platform.
+if profile_is_darwin; then
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+  for __profile_layer in "${PROFILE_LAYERS[@]}"; do
+    if ! __profile_provision_validate_layer "$__profile_layer"; then
+      return 2 2>/dev/null || exit 2
+    fi
+  done
+elif (( ${#PROFILE_LAYERS} > 0 )) || [[ -n "$PROFILE_COMPOSE_ONLY" ]]; then
+  __profile_log_error "--profile and --compose are Darwin-only; provisioning is not supported on this platform"
+  return 2 2>/dev/null || exit 2
 fi
 
 __profile_main_rc=0

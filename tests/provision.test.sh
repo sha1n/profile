@@ -91,6 +91,41 @@ function test_compose_appends_selected_layers() {
   assert_not_contains "$composed" 'brew "poetry"'
 }
 
+function test_profile_flag_rejected_on_linux() {
+  test_case_title
+
+  # The Darwin boundary is what protects the dual-platform contract in AGENTS.md.
+  if [[ "$OSTYPE" == darwin* ]]; then
+    echo "  skipped on darwin"
+    return 0
+  fi
+
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --profile dev-go --no-provision >/dev/null 2>&1
+  assert_equal "$?" "2"
+}
+
+function test_unknown_layer_rejected_on_darwin() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  local out
+  out="$(zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --profile dev-cobol --no-provision 2>&1)"
+  assert_equal "$?" "2"
+  assert_contains "$out" "dev-cobol"
+}
+
+function test_no_provision_skips_homebrew() {
+  test_case_title
+
+  local out
+  out="$(zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --no-provision --yes 2>&1)"
+  assert_not_contains "$out" "provisioning packages"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -98,5 +133,8 @@ run_test test_available_layers_discovered_by_glob
 run_test test_validate_layer_rejects_unknown
 run_test test_compose_always_includes_essentials
 run_test test_compose_appends_selected_layers
+run_test test_profile_flag_rejected_on_linux
+run_test test_unknown_layer_rejected_on_darwin
+run_test test_no_provision_skips_homebrew
 finish_tests
 cleanup
