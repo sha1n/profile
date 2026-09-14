@@ -12,7 +12,7 @@ install_profile() {
     test_setup_title
     touch "$HOME/$fingerprint"
     # install profile in the test sandbox HOME directory
-    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
+    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --no-provision
     # source load.zsh at top level so exports are visible to all run_test subshells
     source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
   fi
@@ -124,6 +124,40 @@ function test_agents_global_default_replaces() {
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
+function test_assume_yes_replaces_without_prompt() {
+  test_case_title
+
+  # --yes must replace an existing agent config without consulting stdin at all.
+  # 'n' is fed deliberately: a default-Yes answer to a prompt reaches the same end
+  # state, so only a declining stdin proves the read was skipped.
+  rm -f "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md"
+  print "OLD CONTENT" >"$HOME/.claude/CLAUDE.md"
+  print "OLD CONTENT" >"$HOME/.codex/AGENTS.md"
+
+  print "n\nn\n" | PROFILE_ASSUME_YES=1 install_agents_global >/dev/null 2>&1
+  assert_equal "$?" "0"
+
+  assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
+  assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
+}
+
+function test_unknown_flag_exits_2() {
+  test_case_title
+
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --bogus-flag >/dev/null 2>&1
+  assert_equal "$?" "2"
+}
+
+function test_help_exits_0() {
+  test_case_title
+
+  local out
+  out="$(zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --help 2>&1)"
+  assert_equal "$?" "0"
+  assert_contains "$out" "--profile"
+  assert_contains "$out" "--check"
+}
+
 install_profile
 run_test test_source
 run_test test_locale_set
@@ -135,5 +169,8 @@ run_test test_agents_global_idempotent
 run_test test_agents_global_keep_existing
 run_test test_agents_global_replace_existing
 run_test test_agents_global_default_replaces
+run_test test_assume_yes_replaces_without_prompt
+run_test test_unknown_flag_exits_2
+run_test test_help_exits_0
 finish_tests
 cleanup

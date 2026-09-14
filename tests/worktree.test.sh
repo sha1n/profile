@@ -11,7 +11,7 @@ setup() {
   else
     test_setup_title
     touch "$HOME/$fingerprint"
-    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
+    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --no-provision
     source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
   fi
 }

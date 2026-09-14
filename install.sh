@@ -4,10 +4,74 @@ SHA1N_PROFILE_HOME="${${(%):-%x}:a:h}"
 source "$SHA1N_PROFILE_HOME/scripts/lib.zsh"
 source "$SHA1N_PROFILE_HOME/include/exports"
 
+# zsh_eval_context is (toplevel) when executed and (toplevel file) when sourced.
+# set -e in a sourced file would leak into the caller and abort the test harness.
+if [[ "${#zsh_eval_context}" -eq 1 ]]; then
+  set -euo pipefail
+fi
+
 dotzshrc="$HOME/.zshrc"
 agent_global_configs=("$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md")
 dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
 dirs=("$HOME/.local/bin" "$CODE/w")
+
+: "${PROFILE_ASSUME_YES:=}"
+: "${PROFILE_NO_PROVISION:=}"
+PROFILE_CHECK_ONLY=""
+PROFILE_COMPOSE_ONLY=""
+PROFILE_CHECK_UPGRADES=""
+typeset -ga PROFILE_LAYERS=()
+
+function usage() {
+  cat <<'USAGE'
+Usage: ./install.sh [options]
+
+  --profile NAME     Add a provisioning layer (repeatable; comma-separated accepted).
+                     Darwin only.
+  --check            Report drift without mutating anything.
+                     Exit 0 = satisfied, non-zero = drift.
+  --upgrades         With --check, count outdated packages as drift.
+  --compose          Print the effective Brewfile to stdout. Darwin only.
+  --yes              Non-interactive; assume Yes for prompts.
+                     Equivalent to PROFILE_ASSUME_YES=1.
+  --no-provision     Skip the Homebrew step.
+                     Equivalent to PROFILE_NO_PROVISION=1.
+  --help             Show this message.
+USAGE
+}
+
+function parse_args() {
+  while (( $# > 0 )); do
+    case "$1" in
+      --profile)
+        [[ -n "${2:-}" ]] || { print -u2 "--profile requires a value"; return 2; }
+        PROFILE_LAYERS+=("${(@s:,:)2}")
+        shift 2
+        ;;
+      --profile=*)
+        PROFILE_LAYERS+=("${(@s:,:)1#--profile=}")
+        shift
+        ;;
+      --check)        PROFILE_CHECK_ONLY=1; shift ;;
+      --upgrades)     PROFILE_CHECK_UPGRADES=1; shift ;;
+      --compose)      PROFILE_COMPOSE_ONLY=1; shift ;;
+      --yes)          PROFILE_ASSUME_YES=1; shift ;;
+      --no-provision) PROFILE_NO_PROVISION=1; shift ;;
+      --help)         usage; return 10 ;;
+      *)              print -u2 "unknown option: $1"; usage >&2; return 2 ;;
+    esac
+  done
+  return 0
+}
+
+function run_step() {
+  local label="$1"; shift
+  if ! "$@"; then
+    __profile_log_error "step failed: ${label}"
+    __profile_log_error "re-run to resume: ./install.sh ${PROFILE_ARGV_ECHO}"
+    return 1
+  fi
+}
 
 function validate_shell_rc_file() {
   __profile_log_info "Observing $dotzshrc..."
@@ -27,10 +91,8 @@ function validate_shell_rc_file() {
 function install_source_command() {
   __profile_log_info "installing profile..."
   echo "source '$SHA1N_PROFILE_HOME/load.zsh'" >>"$dotzshrc"
-  if [[ "$?" == "0" ]]; then
-    __profile_log_info "installed successfully!"
-    __profile_log_info "to verify installation start new session or source $dotzshrc"
-  fi
+  __profile_log_info "installed successfully!"
+  __profile_log_info "to verify installation start new session or source $dotzshrc"
 }
 
 function install_agents_global() {
@@ -48,8 +110,10 @@ function install_agents_global() {
 
     # Existing file or link: replacing it is destructive, so ask first (default: Yes).
     if [[ -e "$target" || -L "$target" ]]; then
-      local reply
-      read "reply?'$target' already exists. Replace it with a link to the profile's AGENTS.md? [n/Y] "
+      local reply=""
+      if [[ -z "$PROFILE_ASSUME_YES" ]]; then
+        read "reply?'$target' already exists. Replace it with a link to the profile's AGENTS.md? [n/Y] "
+      fi
       if [[ "$reply" == [nN] ]]; then
         __profile_log_info "keeping existing '$target'"
         continue
@@ -75,20 +139,20 @@ function link_dotfile() {
 
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
-  
+
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
     if [[ "$file" == "init.lua" ]]; then
       continue
     fi
-    link_dotfile "$file" || __pe_log_error "failed to link '$file'!"
+    link_dotfile "$file" || __profile_log_error "failed to link '$file'!"
   done
 }
 
 function setup_neovim() {
   __profile_log_info "setting up neovim..."
   local nvim_config_dir="$HOME/.config/nvim"
-  
-  create_directory "$nvim_config_dir" || __pe_log_error "failed to create '$nvim_config_dir'!"
+
+  create_directory "$nvim_config_dir" || __profile_log_error "failed to create '$nvim_config_dir'!"
 
   if [[ -f "$nvim_config_dir/init.lua" ]]; then
        __profile_log_warn "the file '$nvim_config_dir/init.lua' already exists. Skipping..."
@@ -111,36 +175,59 @@ function create_directory() {
 function create_directories() {
   __profile_log_info "creating directories..."
 
-  for dir in "${dirs[@]}"; do 
-    create_directory "$dir" || __pe_log_error "failed to create '$dir'!"
+  for dir in "${dirs[@]}"; do
+    create_directory "$dir" || __profile_log_error "failed to create '$dir'!"
   done
 }
 
 function update_submodules() {
   __profile_log_info "updating submodules..."
-  
-  git submodule update --init
+
+  git -C "$SHA1N_PROFILE_HOME" submodule update --init
   return "$?"
 }
 
+function compile_bytecode() {
+  __profile_log_info "compiling zsh files to bytecode..."
+  for f in "$SHA1N_PROFILE_HOME"/load.zsh "$SHA1N_PROFILE_HOME"/include/*(.) "$SHA1N_PROFILE_HOME"/scripts/lib.zsh; do
+    [[ "$f" == *.zwc ]] && continue
+    zcompile "$f" 2>/dev/null
+  done
+  __profile_log_success "bytecode compilation complete"
+  return 0
+}
 
-update_submodules && __profile_log_success "submodules updated successfully" || __profile_log_warn "failed to update submodules!"
+function main() {
+  run_step "submodules" update_submodules || return 1
+  __profile_log_success "submodules updated successfully"
 
-link_dotfiles
+  run_step "dotfiles" link_dotfiles || return 1
+  run_step "directories" create_directories || return 1
 
-create_directories 
+  validate_shell_rc_file && install_source_command
 
-validate_shell_rc_file && install_source_command
+  run_step "agent configs" install_agents_global || return 1
+  run_step "neovim" setup_neovim || return 1
+  run_step "bytecode" compile_bytecode || return 1
 
-install_agents_global
+  __profile_log_info "done!"
+  return 0
+}
 
-setup_neovim
+PROFILE_ARGV_ECHO="$*"
 
-__profile_log_info "compiling zsh files to bytecode..."
-for f in "$SHA1N_PROFILE_HOME"/load.zsh "$SHA1N_PROFILE_HOME"/include/*(.) "$SHA1N_PROFILE_HOME"/scripts/lib.zsh; do
-  [[ "$f" == *.zwc ]] && continue
-  zcompile "$f" 2>/dev/null
-done
-__profile_log_success "bytecode compilation complete"
+# `|| rc=$?` rather than a bare call: under the strict mode above, errexit would
+# abort the script on a non-zero return before $? could be inspected.
+__profile_parse_rc=0
+parse_args "$@" || __profile_parse_rc=$?
+if (( __profile_parse_rc == 10 )); then
+  return 0 2>/dev/null || exit 0
+elif (( __profile_parse_rc != 0 )); then
+  return $__profile_parse_rc 2>/dev/null || exit $__profile_parse_rc
+fi
 
-__profile_log_info "done!"
+__profile_main_rc=0
+main || __profile_main_rc=$?
+if [[ "${#zsh_eval_context}" -eq 1 ]]; then
+  exit $__profile_main_rc
+fi
