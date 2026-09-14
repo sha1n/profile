@@ -86,7 +86,13 @@ function __profile_provision_trust_taps() {
   local tap
   for tap in ${(f)"$(__profile_provision_declared_taps "$@")"}; do
     [[ -n "$tap" ]] || continue
-    brew trust "$tap" >/dev/null 2>&1
+    # Granting a tap permission to have its Ruby executed is security-relevant;
+    # say so rather than doing it silently.
+    __profile_log_info "trusting tap: ${tap}"
+    if ! brew trust "$tap" 2>&1; then
+      __profile_log_error "failed to trust tap '${tap}'"
+      return 1
+    fi
   done
   return 0
 }
@@ -96,6 +102,6 @@ function __profile_provision_trust_taps() {
 # so `vscode` lines resolve within the same pass.
 #
 function __profile_provision_install() {
-  __profile_provision_trust_taps "$@"
+  __profile_provision_trust_taps "$@" || return 1
   __profile_provision_compose "$@" | brew bundle install --file=-
 }

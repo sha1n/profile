@@ -469,6 +469,23 @@ function test_check_reports_managed_link_drift() {
   assert_equal "$vscode_rc" "1"
 }
 
+function test_provisioning_requires_homebrew() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  # Provisioning is main()'s first step, so a Mac without Homebrew must fail with
+  # an actionable message rather than an opaque "command not found".
+  local out
+  out="$(PATH=/usr/bin:/bin provision_packages 2>&1)"
+  assert_equal "$?" "1"
+  assert_contains "$out" "Homebrew"
+  assert_contains "$out" "--no-provision"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -505,5 +522,6 @@ run_test test_essentials_satisfies_shell_hard_requirements
 run_test test_install_is_idempotent
 run_test test_linux_suite_unaffected
 run_test test_declared_taps_are_trusted_before_install
+run_test test_provisioning_requires_homebrew
 finish_tests
 cleanup

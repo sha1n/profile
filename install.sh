@@ -276,6 +276,14 @@ function profile_is_darwin() {
 }
 
 function provision_packages() {
+  # Provisioning is main()'s first step (§8.7), so without this guard a Mac
+  # lacking Homebrew aborts the whole run before a single dotfile is linked.
+  if ! command -v brew >/dev/null 2>&1; then
+    __profile_log_error "Homebrew is required to provision packages but was not found"
+    __profile_log_error "install it from https://brew.sh, or re-run with --no-provision"
+    return 1
+  fi
+
   __profile_log_info "provisioning packages..."
   __profile_provision_install "${PROFILE_LAYERS[@]}"
 }
