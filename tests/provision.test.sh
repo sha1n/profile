@@ -316,13 +316,28 @@ function test_every_declared_entry_resolves() {
     return 0
   fi
 
-  # Catches undeclared taps (§6.3): installed state masks unresolvable names,
-  # so `brew bundle check` passes locally and would fail on a fresh machine.
-  local out
-  out="$(__profile_provision_compose $(__profile_provision_available_layers) 2>&1 | brew bundle list --file=- 2>&1)"
+  # Catches typos and undeclared taps (§6.3): installed state masks unresolvable
+  # names, so a bad entry would only surface on a fresh machine.
+  #
+  # `brew bundle list` is NOT usable here — it echoes declared names without
+  # resolving them and exits 0 even for a nonexistent formula. `brew info`
+  # resolves, and takes every name in one batched call.
+  local -a layers formulae casks
+  layers=(${(f)"$(__profile_provision_available_layers)"})
+  formulae=(${(f)"$(__profile_provision_declared_entries brew "${layers[@]}")"})
+  casks=(${(f)"$(__profile_provision_declared_entries cask "${layers[@]}")"})
+
+  assert_equal "$(( ${#formulae} > 0 ))" "1"
+  assert_equal "$(( ${#casks} > 0 ))" "1"
+
+  brew info --json=v2 --formula "${formulae[@]}" >/dev/null 2>&1
   assert_equal "$?" "0"
-  assert_not_contains "$out" "No available formula"
-  assert_not_contains "$out" "is unavailable"
+
+  brew info --json=v2 --cask "${casks[@]}" >/dev/null 2>&1
+  assert_equal "$?" "0"
+
+  # vscode entries cannot be resolved without `code` on PATH and a network round
+  # trip per extension; they are deliberately not validated here.
 }
 
 function test_one_owning_layer_per_package() {

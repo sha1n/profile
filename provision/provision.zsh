@@ -61,10 +61,19 @@ function __profile_provision_check_upgrades() {
 }
 
 #
+# Names the composed Brewfile declares for a given entry type (tap, brew, cask,
+# vscode), one per line.
+#
+function __profile_provision_declared_entries() {
+  local kind="$1"; shift
+  __profile_provision_compose "$@" | awk -F'"' -v kind="$kind" '$0 ~ "^" kind " " {print $2}'
+}
+
+#
 # Names of the taps the composed Brewfile declares, one per line.
 #
 function __profile_provision_declared_taps() {
-  __profile_provision_compose "$@" | awk -F'"' '/^tap /{print $2}'
+  __profile_provision_declared_entries tap "$@"
 }
 
 #
