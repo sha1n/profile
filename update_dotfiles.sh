@@ -15,7 +15,7 @@ function link_dotfile() {
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
-    if [[ "$file" != ".gitconfig" && "$file" != "init.lua" ]]; then
+    if [[ "$file" != ".gitconfig" && "$file" != "init.lua" && "$file" != "vscode-settings.json" ]]; then
       link_dotfile "$file" && __profile_log_success "ok!" || error "failed!"
     fi
   done
@@ -33,6 +33,20 @@ function setup_neovim() {
   ln -sf "$dotfiles_dir/init.lua" "$nvim_config_dir/init.lua"
 }
 
+function setup_vscode_settings() {
+  [[ "$OSTYPE" == darwin* ]] || return 0
+
+  __profile_log_info "updating VS Code settings..."
+  local user_dir="$HOME/Library/Application Support/Code/User"
+
+  if [[ ! -d "$user_dir" ]]; then
+    mkdir -p "$user_dir"
+  fi
+
+  ln -sf "$dotfiles_dir/vscode-settings.json" "$user_dir/settings.json"
+}
+
 link_dotfiles
 setup_neovim
+setup_vscode_settings
 __profile_log_success "done!"

@@ -141,7 +141,7 @@ function link_dotfiles() {
   __profile_log_info "linking dot files..."
 
   for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
-    if [[ "$file" == "init.lua" ]]; then
+    if [[ "$file" == "init.lua" || "$file" == "vscode-settings.json" ]]; then
       continue
     fi
     link_dotfile "$file" || __profile_log_error "failed to link '$file'!"
@@ -177,6 +177,37 @@ function setup_neovim() {
   fi
 
   __profile_log_info "linking init.lua..."
+  ln -s "$source" "$target"
+  return "$?"
+}
+
+function setup_vscode_settings() {
+  profile_is_darwin || return 0
+
+  __profile_log_info "setting up VS Code settings..."
+  local user_dir="$HOME/Library/Application Support/Code/User"
+  local target="$user_dir/settings.json"
+  local source="$dotfiles_dir/vscode-settings.json"
+
+  # The cask installs the app but never creates this directory; VS Code creates
+  # it on first launch, which may not have happened yet.
+  create_directory "$user_dir" || return 1
+
+  if [[ "$(readlink "$target" 2>/dev/null)" == "$source" ]]; then
+    __profile_log_warn "'$target' is already linked to the profile. Skipping..."
+    return 0
+  fi
+
+  if [[ -L "$target" ]]; then
+    ln -sfn "$source" "$target"
+    return "$?"
+  fi
+
+  if [[ -e "$target" ]]; then
+    __profile_log_warn "'$target' is a regular file, not a link. Leaving it alone."
+    return 0
+  fi
+
   ln -s "$source" "$target"
   return "$?"
 }
@@ -282,6 +313,7 @@ function main() {
 
   run_step "agent configs" install_agents_global || return 1
   run_step "neovim" setup_neovim || return 1
+  run_step "vscode settings" setup_vscode_settings || return 1
   run_step "bytecode" compile_bytecode || return 1
 
   __profile_log_info "done!"

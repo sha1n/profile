@@ -196,6 +196,25 @@ function test_neovim_preserves_a_real_file() {
   assert_contains "$(cat "$nvim_dir/init.lua")" "hand written"
 }
 
+function test_vscode_settings_not_linked_into_home_root() {
+  test_case_title
+
+  # dotfiles/ is linked by basename, so this file must be excluded from the loop.
+  assert_equal "$(test -e "$HOME/vscode-settings.json" && echo present || echo absent)" "absent"
+}
+
+function test_vscode_settings_linked_to_application_support() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  local target="$HOME/Library/Application Support/Code/User/settings.json"
+  assert_equal "$(readlink "$target")" "$SHA1N_PROFILE_HOME/dotfiles/vscode-settings.json"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -211,5 +230,7 @@ run_test test_check_is_non_mutating
 run_test test_check_does_not_link_dotfiles
 run_test test_neovim_relinks_a_foreign_symlink
 run_test test_neovim_preserves_a_real_file
+run_test test_vscode_settings_not_linked_into_home_root
+run_test test_vscode_settings_linked_to_application_support
 finish_tests
 cleanup

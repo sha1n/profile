@@ -1,0 +1,147 @@
+{
+    "editor.suggestSelection": "first",
+    "workbench.tree.indent": 20,
+    "workbench.editor.highlightModifiedTabs": true,
+    "editor.tabSize": 2,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        ".",
+        "-p",
+        "*_test.py",
+        "test_*.py"
+    ],
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "workbench.editorAssociations": {
+        "*.ipynb": "jupyter-notebook"
+    },
+    "go.formatTool": "goimports",
+    "go.useLanguageServer": true,
+    "go.autocompleteUnimportedPackages": true,
+    "go.testOnSave": true,
+    "go.coverShowCounts": true,
+    "go.lintTool": "golint",
+    "gopls": {
+        "usePlaceholders": true
+    },
+    "[go]": {
+        "editor.insertSpaces": false,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "editor.suggest.snippetsPreventQuickSuggestions": false
+    },
+    "npm.enableTouchbar": true,
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "editor.fontSize": 14,
+    "yaml.customTags": [
+        "!encrypted/pkcs1-oaep scalar",
+        "!vault scalar"
+    ],
+    "testExplorer.onReload": "reset",
+    "testExplorer.onStart": "reset",
+    "redhat.telemetry.enabled": false,
+    "files.autoSaveDelay": 500,
+    "files.exclude": {
+        "**/.classpath": true,
+        "**/.project": true,
+        "**/.settings": true,
+        "**/.factorypath": true
+    },
+    "terminal.integrated.fontWeight": "normal",
+    "terminal.integrated.fontFamily": "Meslo LG M DZ for Powerline",
+    "cSpell.userWords": [
+        "Backoff",
+        "Nagar",
+        "posttest",
+        "retriable",
+        "Shai"
+    ],
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "prettier.jsxSingleQuote": true,
+    "prettier.singleQuote": true,
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "modifications",
+    "eslint.format.enable": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "files.autoSave": "afterDelay",
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "go.toolsManagement.autoUpdate": true,
+    "workbench.iconTheme": "material-icon-theme",
+    "pythonTestExplorer.testFramework": "pytest",
+    "python.testing.cwd": "tests",
+    "python.testing.pytestEnabled": true,
+    "editor.detectIndentation": false,
+    "[python]": {
+      "editor.formatOnType": true,
+      "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "editor.inlineSuggest.enabled": true,
+    "github.copilot.enable": {
+      "javascript": true,
+      "python": true, 
+      "dockerfile": true,
+      "yaml": true,
+      "terraform": true,
+      "*": true,
+      "plaintext": false,
+      "markdown": false,
+      "scminput": false
+    },
+    "explorer.confirmDragAndDrop": false,
+    "makefile.configureOnOpen": true,
+    "remote.defaultExtensionsIfInstalledLocally": [
+      "GitHub.copilot",
+      "GitHub.copilot-chat",
+      "GitHub.vscode-pull-request-github"
+    ],
+    "git.autofetch": true,
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "[dockercompose]": {
+      "editor.insertSpaces": true,
+      "editor.tabSize": 2,
+      "editor.autoIndent": "advanced",
+      "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": true
+      },
+      "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[github-actions-workflow]": {
+      "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "chat.tools.terminal.autoApprove": {
+      "/^ansible-lint --project-dir playbooks/ --fix$/": {
+        "approve": true,
+        "matchCommandLine": true
+      }
+    },
+    "chat.mcp.gallery.enabled": true,
+    "claudeCode.preferredLocation": "panel",
+    "chat.viewSessions.orientation": "stacked",
+    "terminal.integrated.fontSize": 14,
+    "yaml.disableSchemaDetection": [],
+    "editor.accessibilitySupport": "off",
+    "workbench.colorTheme": "Dracula Theme"
+}
