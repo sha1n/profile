@@ -1,24 +1,24 @@
 [submodule "zsh-plugins/path-ethic"]
 	path = zsh-plugins/path-ethic
-	url = git@github.com:sha1n/path-ethic.git
+	url = https://github.com/sha1n/path-ethic.git
 [submodule "zsh-plugins/zsh-history-substring-search"]
 	path = zsh-plugins/zsh-history-substring-search
-	url = git@github.com:zsh-users/zsh-history-substring-search.git
+	url = https://github.com/zsh-users/zsh-history-substring-search.git
 [submodule "zsh-plugins/zsh-syntax-highlighting"]
 	path = zsh-plugins/zsh-syntax-highlighting
-	url = git@github.com:zsh-users/zsh-syntax-highlighting.git
+	url = https://github.com/zsh-users/zsh-syntax-highlighting.git
 [submodule "zsh-theme/agnoster-zsh-theme"]
 	path = zsh-theme/agnoster-zsh-theme
-	url = git@github.com:agnoster/agnoster-zsh-theme.git
+	url = https://github.com/agnoster/agnoster-zsh-theme.git
 [submodule "zsh-plugins/zsh-completions"]
 	path = zsh-plugins/zsh-completions
-	url = git@github.com:zsh-users/zsh-completions.git
+	url = https://github.com/zsh-users/zsh-completions.git
 [submodule "tests/zsh-scriptest"]
 	path = tests/zsh-scriptest
-	url = git@github.com:sha1n/zsh-scriptest.git
+	url = https://github.com/sha1n/zsh-scriptest.git
 [submodule "zsh-plugins/zsh-autosuggestions"]
 	path = zsh-plugins/zsh-autosuggestions
-	url = git@github.com:zsh-users/zsh-autosuggestions.git
+	url = https://github.com/zsh-users/zsh-autosuggestions.git
 [submodule "zsh-plugins/zsh-defer"]
 	path = zsh-plugins/zsh-defer
 	url = https://github.com/romkatv/zsh-defer.git
