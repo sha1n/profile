@@ -408,6 +408,35 @@ function test_declared_taps_are_trusted_before_install() {
   assert_contains "$taps" "sqldef/sqldef"
 }
 
+function test_vim_colors_preserves_a_real_file() {
+  test_case_title
+
+  local colors_dir="$HOME/.vim/colors"
+  mkdir -p "$colors_dir"
+  rm -f "$colors_dir/solarized.vim"
+  print -r -- "\" hand written" >"$colors_dir/solarized.vim"
+
+  setup_vim_colors >/dev/null 2>&1
+
+  # A regular file is the user's own work; never clobber it silently.
+  assert_empty "$(readlink "$colors_dir/solarized.vim" 2>/dev/null)"
+  assert_contains "$(cat "$colors_dir/solarized.vim")" "hand written"
+}
+
+function test_vim_colors_relinks_a_foreign_symlink() {
+  test_case_title
+
+  local colors_dir="$HOME/.vim/colors"
+  local foreign="$HOME/foreign-solarized.vim"
+  mkdir -p "$colors_dir"
+  print -r -- "\" not ours" >"$foreign"
+  ln -sfn "$foreign" "$colors_dir/solarized.vim"
+
+  setup_vim_colors >/dev/null 2>&1
+
+  assert_equal "$(readlink "$colors_dir/solarized.vim")" "$SHA1N_PROFILE_HOME/dotfiles/colors/solarized.vim"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -428,6 +457,8 @@ run_test test_vscode_settings_linked_to_application_support
 run_test test_go_bin_on_path
 run_test test_solarized_colorscheme_is_tracked
 run_test test_solarized_linked_where_vim_looks
+run_test test_vim_colors_preserves_a_real_file
+run_test test_vim_colors_relinks_a_foreign_symlink
 run_test test_nvm_sourced_when_present
 run_test test_toolchain_aliases_are_guarded
 run_test test_kubectl_alias_absent_without_kubectl

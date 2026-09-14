@@ -185,12 +185,33 @@ function setup_vim_colors() {
   __profile_log_info "setting up vim colorscheme..."
   local colors_dir="$HOME/.vim/colors"
   local source="$dotfiles_dir/colors/solarized.vim"
+  local target="$colors_dir/solarized.vim"
 
   # dotfiles/ is linked into $HOME by basename, which would land this at
   # ~/solarized.vim where vim never looks. Linking it into vim's stock
   # runtimepath keeps dotfiles/.vimrc free of any repo path literal.
   create_directory "$colors_dir" || return 1
-  ln -sfn "$source" "$colors_dir/solarized.vim"
+
+  if [[ "$(readlink "$target" 2>/dev/null)" == "$source" ]]; then
+    __profile_log_warn "'$target' is already linked to the profile. Skipping..."
+    return 0
+  fi
+
+  # Same policy as setup_neovim: a foreign symlink is another installer's
+  # artifact and is reclaimed; a regular file is the user's own and is not.
+  if [[ -L "$target" ]]; then
+    __profile_log_info "relinking solarized.vim (was: $(readlink "$target"))..."
+    ln -sfn "$source" "$target"
+    return "$?"
+  fi
+
+  if [[ -e "$target" ]]; then
+    __profile_log_warn "'$target' is a regular file, not a link. Leaving it alone."
+    __profile_log_warn "to adopt the profile's colorscheme: rm '$target' && ./install.sh"
+    return 0
+  fi
+
+  ln -s "$source" "$target"
   return "$?"
 }
 
