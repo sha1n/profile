@@ -71,38 +71,46 @@ alias grview='glab repo view -w'
 alias maket='make test'
 alias makev='make format lint test'
 # yarn/npm
-alias yi='yarn install'
-alias yt='y run test'
-alias yit='y run test:it'
-alias yut='y run test:unit'
-alias yb='y run build'
-alias yc='y run clean'
-alias yl='yarn run lint'
-alias yr='yi && yc && yb'
+if command -v yarn >/dev/null 2>&1; then
+  alias yi='yarn install'
+  alias yt='y run test'
+  alias yit='y run test:it'
+  alias yut='y run test:unit'
+  alias yb='y run build'
+  alias yc='y run clean'
+  alias yl='yarn run lint'
+  alias yr='yi && yc && yb'
+fi
 alias rm_node_modules='find . -type d -name node_modules -exec rm -rf {} +'
 # kubectl
-alias k='kubectl'
-alias ke='kubectl get events --sort-by=".lastTimestamp"'
-alias kenn='kubectl get events --sort-by=".lastTimestamp" --field-selector type!=Normal'
-alias kc='kubectl --kubeconfig'
+if command -v kubectl >/dev/null 2>&1; then
+  alias k='kubectl'
+  alias ke='kubectl get events --sort-by=".lastTimestamp"'
+  alias kenn='kubectl get events --sort-by=".lastTimestamp" --field-selector type!=Normal'
+  alias kc='kubectl --kubeconfig'
+fi
 # bazel
 alias bazel='bazel_with_disk_cache_guard'
 alias bazel_rm='sudo rm -rf ~/.cache/bazel'
 # dockerized mysql
-alias mysqld8='docker run -v "/tmp/mysql_mount/":/var/lib/mymysql -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8 --secure-file-priv=""'
+if command -v docker >/dev/null 2>&1; then
+  alias mysqld8='docker run -v "/tmp/mysql_mount/":/var/lib/mymysql -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8 --secure-file-priv=""'
+fi
 # maven
-alias mvn1='mvn verify -amd -pl'
-alias mvnci='mvn -T 1C clean install'
-alias mvncv='mvn -T 1C clean verify'
-alias mvnq='mvn -T 1C clean install -DskipTests'
-alias mvndl='mvn dependency:list'
-alias mvndt='mvn dependency:tree'
-alias mvndr='mvn dependency:resolve -U'
-alias mvnpls='mvn dependency:purge-local-repository -DsnapshotsOnly=true'
-alias mvnpl='mvn dependency:purge-local-repository'
-# filters out non first degree dependencies from 'mvndt' output
-alias mvndtt='mvndt | grep --color=never -F "[INFO] +- " | tr -d "[INFO] +- "'
-alias mvnsv='mvn versions:set -DnewVersion='
+if command -v mvn >/dev/null 2>&1; then
+  alias mvn1='mvn verify -amd -pl'
+  alias mvnci='mvn -T 1C clean install'
+  alias mvncv='mvn -T 1C clean verify'
+  alias mvnq='mvn -T 1C clean install -DskipTests'
+  alias mvndl='mvn dependency:list'
+  alias mvndt='mvn dependency:tree'
+  alias mvndr='mvn dependency:resolve -U'
+  alias mvnpls='mvn dependency:purge-local-repository -DsnapshotsOnly=true'
+  alias mvnpl='mvn dependency:purge-local-repository'
+  # filters out non first degree dependencies from 'mvndt' output
+  alias mvndtt='mvndt | grep --color=never -F "[INFO] +- " | tr -d "[INFO] +- "'
+  alias mvnsv='mvn versions:set -DnewVersion='
+fi
 # utilities
 alias uuid="uuidgen |  awk '{print tolower(\$0)}'"
 alias history='history 1'

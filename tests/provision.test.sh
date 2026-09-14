@@ -249,6 +249,27 @@ function test_nvm_sourced_when_present() {
   assert_equal "$(type -w nvm | cut -d: -f2 | tr -d ' ')" "function"
 }
 
+function test_toolchain_aliases_are_guarded() {
+  test_case_title
+
+  # Every toolchain-dependent alias group must sit behind a command -v guard, so
+  # an essentials-only machine gets a clean shell rather than broken aliases.
+  local aliases_file="$SHA1N_PROFILE_HOME/include/aliases"
+
+  assert_contains "$(cat "$aliases_file")" 'command -v kubectl'
+  assert_contains "$(cat "$aliases_file")" 'command -v mvn'
+  assert_contains "$(cat "$aliases_file")" 'command -v yarn'
+  assert_contains "$(cat "$aliases_file")" 'command -v docker'
+}
+
+function test_kubectl_alias_absent_without_kubectl() {
+  test_case_title
+
+  local out
+  out="$(PATH=/usr/bin:/bin zsh -c 'source '"$SHA1N_PROFILE_HOME"'/include/aliases 2>/dev/null; alias k 2>&1' )"
+  assert_not_contains "$out" "kubectl"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -270,5 +291,7 @@ run_test test_go_bin_on_path
 run_test test_solarized_colorscheme_is_tracked
 run_test test_solarized_linked_where_vim_looks
 run_test test_nvm_sourced_when_present
+run_test test_toolchain_aliases_are_guarded
+run_test test_kubectl_alias_absent_without_kubectl
 finish_tests
 cleanup
