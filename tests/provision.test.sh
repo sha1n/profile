@@ -278,6 +278,36 @@ function test_bazel_integration_removed() {
   assert_equal "$(test -e "$SHA1N_PROFILE_HOME/dotfiles/.bazelrc" && echo present || echo absent)" "absent"
 }
 
+function test_export_openjdk_formula_resolves_a_cask_jdk() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]] || [[ ! -x /usr/libexec/java_home ]]; then
+    echo "  skipped: no java_home"
+    return 0
+  fi
+
+  local want
+  want="$(/usr/libexec/java_home -v 25 2>/dev/null)" || { echo "  skipped: no JDK 25"; return 0 }
+
+  export_openjdk_formula 25 >/dev/null 2>&1
+  assert_equal "$?" "0"
+  assert_equal "$JAVA_HOME" "$want"
+}
+
+function test_export_openjdk_formula_rejects_missing_version() {
+  test_case_title
+
+  export_openjdk_formula 8 >/dev/null 2>&1
+  assert_equal "$?" "1"
+}
+
+function test_export_openjdk_formula_requires_an_argument() {
+  test_case_title
+
+  export_openjdk_formula >/dev/null 2>&1
+  assert_equal "$?" "1"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -302,5 +332,8 @@ run_test test_nvm_sourced_when_present
 run_test test_toolchain_aliases_are_guarded
 run_test test_kubectl_alias_absent_without_kubectl
 run_test test_bazel_integration_removed
+run_test test_export_openjdk_formula_resolves_a_cask_jdk
+run_test test_export_openjdk_formula_rejects_missing_version
+run_test test_export_openjdk_formula_requires_an_argument
 finish_tests
 cleanup

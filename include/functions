@@ -145,39 +145,34 @@ function pytestt() {
 }
 
 #
-# Export JAVA_HOME from brew openjdk
+# Exports JAVA_HOME for the given JDK major version.
+#
+# Resolution goes through /usr/libexec/java_home, which discovers any JDK
+# registered under /Library/Java/JavaVirtualMachines — including the temurin
+# casks the provisioning manifest declares. Homebrew's openjdk@N formulae are
+# keg-only and never register there, so they are deliberately not consulted.
 #
 function export_openjdk_formula() {
   if [[ -z "$1" ]]; then
     __profile_log_error "Usage: export_openjdk_formula <version>"
-    __profile_log_error "Example: export_openjdk_formula 21"
+    __profile_log_error "Example: export_openjdk_formula 25"
     return 1
   fi
-  
+
   local version="$1"
-  local formula="openjdk@${version}"
 
-  if ! brew list --formula | grep -q "^${formula}$"; then
-    __profile_log_error "OpenJDK formula '${formula}' is not installed"
-    echo "Available OpenJDK formulas:"
-    brew search openjdk | grep -E "^openjdk(@[0-9]+)?$" | sort -V
+  if [[ ! -x /usr/libexec/java_home ]]; then
+    __profile_log_error "/usr/libexec/java_home is not available on this platform"
+    return 1
+  fi
+
+  local java_home
+  if ! java_home="$(/usr/libexec/java_home -v "$version" 2>/dev/null)"; then
+    __profile_log_error "No JDK found for version '${version}'"
+    echo "Installed JDKs:"
+    /usr/libexec/java_home -V 2>&1 | tail -n +2
     echo ""
-    echo "To install, run: brew install ${formula}"
-    return 1
-  fi
-  
-  local formula_prefix
-  if ! formula_prefix="$(brew --prefix "$formula" 2>/dev/null)"; then
-    __profile_log_error "Failed to get brew prefix for formula '${formula}'"
-    return 1
-  fi
-
-  local java_home="${formula_prefix}/libexec/openjdk.jdk/Contents/Home"
-
-  if [[ ! -d "$java_home" ]]; then
-    __profile_log_error "Java home directory not found: $java_home"
-    __profile_log_error "The formula '${formula}' may be corrupted. Try reinstalling:"
-    echo "  brew uninstall ${formula} && brew install ${formula}"
+    echo "To install, run: ./install.sh --profile dev-java"
     return 1
   fi
 
@@ -189,6 +184,20 @@ function export_openjdk_formula() {
   local java_version
   if ! java_version=$("$java_home/bin/java" -version 2>&1 | head -n 1 | awk -F '"' '{print $2}'); then
     __profile_log_error "Failed to get Java version from: $java_home/bin/java"
+    return 1
+  fi
+
+  # `java_home -v N` matches "N or newer" and exits 0, so an unavailable version
+  # silently resolves to the newest JDK. Compare the major versions to make the
+  # request exact. The leading "1." strip normalises legacy 1.8-style versions.
+  local want_major="${${version#1.}%%.*}"
+  local got_major="${${java_version#1.}%%.*}"
+  if [[ "$got_major" != "$want_major" ]]; then
+    __profile_log_error "No JDK found for version '${version}' (closest match is ${java_version})"
+    echo "Installed JDKs:"
+    /usr/libexec/java_home -V 2>&1 | tail -n +2
+    echo ""
+    echo "To install, run: ./install.sh --profile dev-java"
     return 1
   fi
 
