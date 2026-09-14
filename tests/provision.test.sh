@@ -43,8 +43,60 @@ function test_all_submodules_are_checked_out() {
   assert_equal "$uninitialised" "0"
 }
 
+function test_available_layers_discovered_by_glob() {
+  test_case_title
+
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+  local layers
+  layers="$(__profile_provision_available_layers | sort | tr '\n' ' ')"
+  assert_contains "$layers" "dev-go"
+  assert_contains "$layers" "dev-java"
+  assert_contains "$layers" "dev-node"
+  assert_contains "$layers" "dev-ops"
+  assert_contains "$layers" "dev-python"
+  # essentials is implicit, never a selectable layer
+  assert_not_contains "$layers" "essentials"
+}
+
+function test_validate_layer_rejects_unknown() {
+  test_case_title
+
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+  __profile_provision_validate_layer "dev-cobol" >/dev/null 2>&1
+  assert_equal "$?" "1"
+
+  __profile_provision_validate_layer "dev-go" >/dev/null 2>&1
+  assert_equal "$?" "0"
+}
+
+function test_compose_always_includes_essentials() {
+  test_case_title
+
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+  local composed
+  composed="$(__profile_provision_compose)"
+  assert_contains "$composed" 'brew "coreutils"'
+  assert_not_contains "$composed" 'brew "golangci-lint"'
+}
+
+function test_compose_appends_selected_layers() {
+  test_case_title
+
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+  local composed
+  composed="$(__profile_provision_compose dev-go dev-node)"
+  assert_contains "$composed" 'brew "coreutils"'
+  assert_contains "$composed" 'brew "golangci-lint"'
+  assert_contains "$composed" 'brew "yarn"'
+  assert_not_contains "$composed" 'brew "poetry"'
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
+run_test test_available_layers_discovered_by_glob
+run_test test_validate_layer_rejects_unknown
+run_test test_compose_always_includes_essentials
+run_test test_compose_appends_selected_layers
 finish_tests
 cleanup
