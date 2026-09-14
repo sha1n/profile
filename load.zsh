@@ -26,7 +26,9 @@ fi
 # NVM_DIR is exported in include/exports but nothing sources nvm itself; envy
 # used to append this to ~/.zshrc, which is this repo's file. nvm.sh is slow and
 # only needed interactively, so it follows the deferred-plugin pattern above.
-__profile_nvm_sh="$(brew --prefix nvm 2>/dev/null)/nvm.sh"
+# Path is derived, not shelled out for: `brew --prefix nvm` forks brew on every
+# shell start, before the prompt, and is not deferrable the way the sourcing is.
+__profile_nvm_sh="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/nvm/nvm.sh"
 if [[ -s "$__profile_nvm_sh" ]]; then
   if [[ -o interactive ]]; then
     zsh-defer source "$__profile_nvm_sh"
