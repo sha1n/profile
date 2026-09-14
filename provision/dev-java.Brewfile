@@ -8,10 +8,3 @@ brew "openapi-generator"
 
 cask "temurin@25"
 cask "intellij-idea"
-
-vscode "redhat.vscode-xml"
-vscode "vscjava.migrate-java-to-azure"
-vscode "vscjava.vscode-java-debug"
-vscode "vscjava.vscode-java-dependency"
-vscode "vscjava.vscode-java-pack"
-vscode "vscjava.vscode-maven"

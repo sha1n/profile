@@ -2,5 +2,3 @@
 brew "go"
 brew "golangci-lint"
 brew "goreleaser"
-
-vscode "golang.go"

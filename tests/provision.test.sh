@@ -335,9 +335,6 @@ function test_every_declared_entry_resolves() {
 
   brew info --json=v2 --cask "${casks[@]}" >/dev/null 2>&1
   assert_equal "$?" "0"
-
-  # vscode entries cannot be resolved without `code` on PATH and a network round
-  # trip per extension; they are deliberately not validated here.
 }
 
 function test_one_owning_layer_per_package() {
@@ -346,7 +343,7 @@ function test_one_owning_layer_per_package() {
   # Scoped to the six known files so a stray `brew bundle dump` artifact in
   # provision/ cannot trip this.
   local dupes
-  dupes="$(grep -hE '^(brew|cask|vscode) ' \
+  dupes="$(grep -hE '^(brew|cask) ' \
     "$SHA1N_PROFILE_HOME/provision/essentials.Brewfile" \
     "$SHA1N_PROFILE_HOME"/provision/dev-*.Brewfile \
     | sort | uniq -d)"

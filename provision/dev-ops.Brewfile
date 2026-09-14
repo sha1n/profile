@@ -9,8 +9,3 @@ brew "sqldef/sqldef/psqldef"
 cask "rancher"
 cask "lens"
 cask "gcloud-cli"
-
-vscode "hashicorp.terraform"
-vscode "ms-azuretools.vscode-containers"
-vscode "ms-azuretools.vscode-docker"
-vscode "ms-vscode-remote.remote-containers"

@@ -65,8 +65,8 @@ function __profile_provision_check_upgrades() {
 }
 
 #
-# Names the composed Brewfile declares for a given entry type (tap, brew, cask,
-# vscode), one per line.
+# Names the composed Brewfile declares for a given entry type (tap, brew, cask),
+# one per line.
 #
 function __profile_provision_declared_entries() {
   local kind="$1"; shift
@@ -102,8 +102,7 @@ function __profile_provision_trust_taps() {
 }
 
 #
-# Applies the composed Brewfile. The visual-studio-code cask puts `code` on PATH,
-# so `vscode` lines resolve within the same pass.
+# Applies the composed Brewfile.
 #
 function __profile_provision_install() {
   __profile_provision_trust_taps "$@" || return 1

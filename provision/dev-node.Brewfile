@@ -3,6 +3,3 @@
 brew "nvm"
 brew "node"
 brew "yarn"
-
-vscode "dbaeumer.vscode-eslint"
-vscode "orta.vscode-jest"
