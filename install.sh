@@ -292,6 +292,11 @@ function check_managed_link() {
   local target="$1" expected="$2"
   if [[ "$(readlink "$target" 2>/dev/null)" != "$expected" ]]; then
     __profile_log_warn "not linked to the profile: $target"
+    # A regular file is preserved by install.sh by design, so re-running alone
+    # will not clear this drift. Say what will.
+    if [[ -e "$target" && ! -L "$target" ]]; then
+      __profile_log_warn "  it is a regular file; to adopt the profile's copy: rm '$target' && ./install.sh"
+    fi
     return 1
   fi
 }
