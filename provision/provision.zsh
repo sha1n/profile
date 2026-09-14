@@ -61,9 +61,32 @@ function __profile_provision_check_upgrades() {
 }
 
 #
+# Names of the taps the composed Brewfile declares, one per line.
+#
+function __profile_provision_declared_taps() {
+  __profile_provision_compose "$@" | awk -F'"' '/^tap /{print $2}'
+}
+
+#
+# Homebrew 6 refuses to load a formula from an untrusted tap, and declaring a tap
+# in a Brewfile does not trust it. Without this, `brew bundle install` fails on a
+# fresh machine at the first sha1n/tap formula. Scope is deliberately limited to
+# taps the manifest itself declares.
+#
+function __profile_provision_trust_taps() {
+  local tap
+  for tap in ${(f)"$(__profile_provision_declared_taps "$@")"}; do
+    [[ -n "$tap" ]] || continue
+    brew trust "$tap" >/dev/null 2>&1
+  done
+  return 0
+}
+
+#
 # Applies the composed Brewfile. The visual-studio-code cask puts `code` on PATH,
 # so `vscode` lines resolve within the same pass.
 #
 function __profile_provision_install() {
+  __profile_provision_trust_taps "$@"
   __profile_provision_compose "$@" | brew bundle install --file=-
 }

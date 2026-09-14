@@ -375,6 +375,24 @@ function test_linux_suite_unaffected() {
   assert_not_contains "$out" "provisioning packages"
 }
 
+function test_declared_taps_are_trusted_before_install() {
+  test_case_title
+
+  if [[ "$OSTYPE" != darwin* ]]; then
+    echo "  skipped off darwin"
+    return 0
+  fi
+
+  # Homebrew 6 refuses to load a formula from an untrusted tap, so declaring a
+  # tap in a Brewfile is not enough for `brew bundle install` to succeed.
+  source "$SHA1N_PROFILE_HOME/provision/provision.zsh"
+  local taps
+  taps="$(__profile_provision_declared_taps | sort | tr '\n' ' ')"
+  assert_contains "$taps" "sha1n/tap"
+  assert_contains "$taps" "dapr/tap"
+  assert_contains "$taps" "sqldef/sqldef"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -407,5 +425,6 @@ run_test test_one_owning_layer_per_package
 run_test test_essentials_satisfies_shell_hard_requirements
 run_test test_install_is_idempotent
 run_test test_linux_suite_unaffected
+run_test test_declared_taps_are_trusted_before_install
 finish_tests
 cleanup
