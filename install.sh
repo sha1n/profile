@@ -280,6 +280,14 @@ function provision_packages() {
   __profile_provision_install "${PROFILE_LAYERS[@]}"
 }
 
+function check_managed_link() {
+  local target="$1" expected="$2"
+  if [[ "$(readlink "$target" 2>/dev/null)" != "$expected" ]]; then
+    __profile_log_warn "not linked to the profile: $target"
+    return 1
+  fi
+}
+
 function check_dotfile_links() {
   local rc=0
   local file target
@@ -294,9 +302,15 @@ function check_dotfile_links() {
     fi
   done
 
-  if [[ "$(readlink "$HOME/.config/nvim/init.lua" 2>/dev/null)" != "$dotfiles_dir/init.lua" ]]; then
-    __profile_log_warn "not linked to the profile: $HOME/.config/nvim/init.lua"
-    rc=1
+  # Links that live outside $HOME's root, skipped by the loop above. Each one
+  # install.sh manages must be verified here or --check reports clean on drift.
+  check_managed_link "$HOME/.config/nvim/init.lua" "$dotfiles_dir/init.lua" || rc=1
+  check_managed_link "$HOME/.vim/colors/solarized.vim" "$dotfiles_dir/colors/solarized.vim" || rc=1
+
+  if profile_is_darwin; then
+    check_managed_link \
+      "$HOME/Library/Application Support/Code/User/settings.json" \
+      "$dotfiles_dir/vscode-settings.json" || rc=1
   fi
 
   return $rc

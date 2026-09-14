@@ -437,6 +437,38 @@ function test_vim_colors_relinks_a_foreign_symlink() {
   assert_equal "$(readlink "$colors_dir/solarized.vim")" "$SHA1N_PROFILE_HOME/dotfiles/colors/solarized.vim"
 }
 
+function test_check_reports_managed_link_drift() {
+  test_case_title
+
+  # --check must cover every link install.sh manages, not just the flat dotfiles.
+  # A link it creates but never verifies is drift that reports as clean.
+  # Heal first: an earlier case removes ~/.vimrc, which would make --check report
+  # drift for an unrelated reason and mask what this case is testing.
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --no-provision --yes >/dev/null 2>&1
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --check --no-provision >/dev/null 2>&1
+  local healed_rc=$?
+
+  # Restore before asserting: a failed matcher returns from the test, which would
+  # otherwise leave the sandbox missing a link later cases depend on.
+  local colors_link="$HOME/.vim/colors/solarized.vim"
+  rm -f "$colors_link"
+  zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --check --no-provision >/dev/null 2>&1
+  local colors_rc=$?
+  setup_vim_colors >/dev/null 2>&1
+
+  local vscode_rc=1
+  if [[ "$OSTYPE" == darwin* ]]; then
+    rm -f "$HOME/Library/Application Support/Code/User/settings.json"
+    zsh "$SHA1N_PROFILE_TESTS_HOME/../install.sh" --check --no-provision >/dev/null 2>&1
+    vscode_rc=$?
+    setup_vscode_settings >/dev/null 2>&1
+  fi
+
+  assert_equal "$healed_rc" "0"
+  assert_equal "$colors_rc" "1"
+  assert_equal "$vscode_rc" "1"
+}
+
 setup
 run_test test_all_submodules_use_https
 run_test test_all_submodules_are_checked_out
@@ -450,6 +482,7 @@ run_test test_no_provision_skips_homebrew
 run_test test_compose_prints_effective_brewfile
 run_test test_check_is_non_mutating
 run_test test_check_does_not_link_dotfiles
+run_test test_check_reports_managed_link_drift
 run_test test_neovim_relinks_a_foreign_symlink
 run_test test_neovim_preserves_a_real_file
 run_test test_vscode_settings_not_linked_into_home_root
