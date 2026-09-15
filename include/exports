@@ -29,3 +29,11 @@ export BAZEL_DISK_CACHE_MAX_AGE="14d"
 export PYTEST_ADDOPTS='-r=fE --maxfail=1 --no-header --failed-first --durations=5 -vv'
 # python cache directories location
 export PYTHONPYCACHEPREFIX="${HOME}/.cache/Python"
+
+#
+# Anthropic / Claude Code
+#
+export CLAUDE_CODE_NEW_INIT=1
+export ANTHROPIC_MODEL="claude-opus-5[1m]"
+# Personal convention used in scripts etc.
+export X_CLAUDE_CODE_DEFAULT_EFFORT_LEVEL="high"
