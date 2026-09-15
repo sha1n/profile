@@ -59,10 +59,8 @@
     "terminal.integrated.fontFamily": "Meslo LG M DZ for Powerline",
     "cSpell.userWords": [
         "Backoff",
-        "Nagar",
         "posttest",
-        "retriable",
-        "Shai"
+        "retriable"
     ],
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"

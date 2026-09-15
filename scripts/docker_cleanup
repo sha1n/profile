@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
 # remove exited/created containers
-docker rm -vf $(docker ps -aqf status=exited -f status=created)
+containers=$(docker ps -aqf status=exited -f status=created)
+[ -n "$containers" ] && docker rm -vf $containers
 
 # remove untagged images
-docker rmi $(docker images -qf dangling=true)
+images=$(docker images -qf dangling=true)
+[ -n "$images" ] && docker rmi $images
 
 # remove unused volumes
 docker volume prune -f

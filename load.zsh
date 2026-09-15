@@ -29,6 +29,7 @@ fi
 # Path is derived, not shelled out for: `brew --prefix nvm` forks brew on every
 # shell start, before the prompt, and is not deferrable the way the sourcing is.
 __profile_nvm_sh="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/nvm/nvm.sh"
+[[ -s "$__profile_nvm_sh" ]] || __profile_nvm_sh="/usr/local/opt/nvm/nvm.sh"
 if [[ -s "$__profile_nvm_sh" ]]; then
   if [[ -o interactive ]]; then
     zsh-defer source "$__profile_nvm_sh"

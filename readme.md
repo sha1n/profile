@@ -70,8 +70,8 @@ never a pipe — `brew bundle cleanup` reads the Brewfile from stdin, so the
 confirmation prompt cannot be shown and it exits 1:
 
     ./install.sh --compose --profile dev-go > /tmp/Brewfile
-    brew bundle cleanup --file=/tmp/Brewfile          # dry run
-    brew bundle cleanup --force --file=/tmp/Brewfile  # apply
+    brew bundle cleanup --file=/tmp/Brewfile          # prompts, then applies if confirmed
+    brew bundle cleanup --force --file=/tmp/Brewfile  # applies with no prompt
 
 > **Warning:** `--force` also **resets the Homebrew trust store** to exactly the
 > taps the composed file declares, revoking trust for any tap it omits.
