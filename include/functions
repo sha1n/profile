@@ -85,22 +85,6 @@ function alias_last() {
 }
 
 #
-# Executes 'bazel' with the specified arguments and runs an async mtime based cleanup command on the
-# bazel disk-cache directory when the command exists.
-#
-function bazel_with_disk_cache_guard() {
-  ("$BAZEL_BIN_PATH" "$@")
-  local rc="$?"
-
-  (find "$BAZEL_DISK_CACHE_DIR" -type f -mtime +$BAZEL_DISK_CACHE_MAX_AGE -delete &)
-  if [[ "$?" != "0" ]]; then
-    __profile_log_warn "[${funcstack[1]}] disk cache cleanup failed"
-  fi
-
-  return "$rc"
-}
-
-#
 # Searches the current directory path for a '.start' file and sources it if found. Otherwise prints an error.
 #
 function start() {

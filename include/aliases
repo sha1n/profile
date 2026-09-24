@@ -85,9 +85,6 @@ alias k='kubectl'
 alias ke='kubectl get events --sort-by=".lastTimestamp"'
 alias kenn='kubectl get events --sort-by=".lastTimestamp" --field-selector type!=Normal'
 alias kc='kubectl --kubeconfig'
-# bazel
-alias bazel='bazel_with_disk_cache_guard'
-alias bazel_rm='sudo rm -rf ~/.cache/bazel'
 # dockerized mysql
 alias mysqld8='docker run -v "/tmp/mysql_mount/":/var/lib/mymysql -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p 3306:3306 mysql:8 --secure-file-priv=""'
 # maven
