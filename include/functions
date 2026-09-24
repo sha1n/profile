@@ -85,22 +85,6 @@ function alias_last() {
 }
 
 #
-# Executes 'bazel' with the specified arguments and runs an async mtime based cleanup command on the
-# bazel disk-cache directory when the command exists.
-#
-function bazel_with_disk_cache_guard() {
-  ("$BAZEL_BIN_PATH" "$@")
-  local rc="$?"
-
-  (find "$BAZEL_DISK_CACHE_DIR" -type f -mtime +$BAZEL_DISK_CACHE_MAX_AGE -delete &)
-  if [[ "$?" != "0" ]]; then
-    __profile_log_warn "[${funcstack[1]}] disk cache cleanup failed"
-  fi
-
-  return "$rc"
-}
-
-#
 # Searches the current directory path for a '.start' file and sources it if found. Otherwise prints an error.
 #
 function start() {
@@ -158,68 +142,6 @@ function pytestt() {
   else 
     pytest -s -v $(fzf -e)
   fi
-}
-
-#
-# Export JAVA_HOME from brew openjdk
-#
-function export_openjdk_formula() {
-  if [[ -z "$1" ]]; then
-    __profile_log_error "Usage: export_openjdk_formula <version>"
-    __profile_log_error "Example: export_openjdk_formula 21"
-    return 1
-  fi
-  
-  local version="$1"
-  local formula="openjdk@${version}"
-
-  if ! brew list --formula | grep -q "^${formula}$"; then
-    __profile_log_error "OpenJDK formula '${formula}' is not installed"
-    echo "Available OpenJDK formulas:"
-    brew search openjdk | grep -E "^openjdk(@[0-9]+)?$" | sort -V
-    echo ""
-    echo "To install, run: brew install ${formula}"
-    return 1
-  fi
-  
-  local formula_prefix
-  if ! formula_prefix="$(brew --prefix "$formula" 2>/dev/null)"; then
-    __profile_log_error "Failed to get brew prefix for formula '${formula}'"
-    return 1
-  fi
-
-  local java_home="${formula_prefix}/libexec/openjdk.jdk/Contents/Home"
-
-  if [[ ! -d "$java_home" ]]; then
-    __profile_log_error "Java home directory not found: $java_home"
-    __profile_log_error "The formula '${formula}' may be corrupted. Try reinstalling:"
-    echo "  brew uninstall ${formula} && brew install ${formula}"
-    return 1
-  fi
-
-  if [[ ! -x "$java_home/bin/java" ]]; then
-    __profile_log_error "Java binary not found or not executable: $java_home/bin/java"
-    return 1
-  fi
-
-  local java_version
-  if ! java_version=$("$java_home/bin/java" -version 2>&1 | head -n 1 | awk -F '"' '{print $2}'); then
-    __profile_log_error "Failed to get Java version from: $java_home/bin/java"
-    return 1
-  fi
-
-  export JAVA_HOME="$java_home"
-
-  echo "✅ Successfully configured OpenJDK ${version}"
-  echo ""
-  echo "📍 JAVA_HOME: $JAVA_HOME"
-  echo "☕ Java version: $java_version"
-  echo ""
-  echo "🔧 To make this permanent, add to your shell profile:"
-  echo "   export JAVA_HOME=\"$JAVA_HOME\""
-  echo ""
-  echo "💡 You can also add \$JAVA_HOME/bin to your PATH:"
-  echo "   export PATH=\"\$JAVA_HOME/bin:\$PATH\""
 }
 
 # Git worktree management
