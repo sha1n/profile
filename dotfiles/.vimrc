@@ -1,7 +1,6 @@
 set nocompatible
 set termguicolors
 set background=dark
-colorscheme solarized
 
 syntax enable
 
