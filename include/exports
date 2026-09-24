@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
 
 export CODE="$HOME/code"
-export NVM_DIR="$HOME/.nvm"
 export GO111MODULE=on
 
 # enable ls colors
