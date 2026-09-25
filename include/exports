@@ -11,6 +11,7 @@ export LSCOLORS=GxFxCxDxBxegedabagaced
 export GREP_COLOR='1;35;40'
 
 PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
+PATH="$PATH:$HOME/go/bin"
 
 # Backup
 export BACKUP_DST_PATH="/Volumes/Backup/latest"
@@ -20,6 +21,7 @@ export BACKUP_SRC_PATH="/Volumes/Content"
 export PYTEST_ADDOPTS='-r=fE --maxfail=1 --no-header --failed-first --durations=5 -vv'
 # python cache directories location
 export PYTHONPYCACHEPREFIX="${HOME}/.cache/Python"
+export PIP_REQUIRE_VIRTUALENV=true
 
 #
 # Anthropic / Claude Code
