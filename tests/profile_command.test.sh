@@ -17,6 +17,8 @@ stub_bin="$stub_dir/bin"
 # of scripts/, not a link to it.
 fake_repo="$HOME/fake"
 stub_branch="feature-x"
+# Every known profile, so cleanup compares against the full list, whatever the caller set.
+all_profiles="$(known_profiles_of "$profile_home/brew/Brewfile")"
 
 section_background() {
   env -i HOME="$HOME" PATH="$system_path" TERM="$section_term" "$zsh_bin" -fc 'print -nP "%K{blue}"'
@@ -499,7 +501,7 @@ function test_cleanup_dry_runs() {
   assert_equal "$rc" "0"
   assert_equal "$calls" "$(step_calls_of brew_dry mise_ls)"
   assert_equal "$(details_of 'brew bundle cleanup*')" \
-    "$(step_call brew_dry)|cwd=/|profiles=essentials dev|stdin=devnull"
+    "$(step_call brew_dry)|cwd=/|profiles=$all_profiles|stdin=devnull"
   assert_contains "$(details_of 'mise ls*')" "$(step_call mise_ls)|cwd=/|"
   assert_contains "$(details_of 'mise ls*')" "|stdin=devnull"
   assert_equal "$(cleanup_sequence)" \
@@ -563,7 +565,7 @@ function test_cleanup_answers() {
     fi
     if [[ "$steps" == *brew_force* ]]; then
       assert_equal "$(details_of 'brew bundle cleanup --force*')" \
-        "$(step_call brew_force)|cwd=/|profiles=essentials dev|stdin=devnull"
+        "$(step_call brew_force)|cwd=/|profiles=$all_profiles|stdin=devnull"
     fi
     if [[ "$steps" == *mise_yes* ]]; then
       assert_contains "$(details_of 'mise prune --tools --yes*')" "$(step_call mise_yes)|cwd=/|"

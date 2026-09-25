@@ -3,7 +3,6 @@
 source "$SHA1N_PROFILE_TESTS_HOME/sandbox.zsh"
 brewfile="$profile_home/brew/Brewfile"
 brew_bin="$(command -v brew)"
-known_profiles=(essentials dev)
 entry_keywords='brew|cask|uv|mas|vscode|whalebrew|go|cargo|npm|flatpak|krew'
 process_or_file_load='`|%x|\b(IO\.|File\.|Open3|Kernel\.|Process\.|system|exec|spawn|fork|popen|require|require_relative|load|eval|instance_eval|class_eval|zsh|bash)\b'
 
@@ -58,11 +57,17 @@ function test_brewfile_layout() {
   local -a brew_dir_files=("$profile_home"/brew/*(DN:t))
   assert_equal "${(j: :)brew_dir_files}" "Brewfile"
 
+  local known
+  known="$(known_profiles_of "$brewfile")"
+  assert_equal "$?" "0"
+  local -a known_profiles=(${=known})
   local -a block_names=(
     ${(f)"$(grep -E '^[[:space:]]*if profiles\.include\?\("[^"]*"\)[[:space:]]*$' "$brewfile" | sed -E 's/^[[:space:]]*if profiles\.include\?\("(.*)"\)[[:space:]]*$/\1/')"}
   )
   assert_not_empty "${block_names[*]}"
+  print -r -- "check: every block is a known profile, and every known profile has one block"
   assert_empty "${(@)block_names:|known_profiles}"
+  assert_empty "${(@)known_profiles:|block_names}"
   assert_empty "$(print -rl -- "${block_names[@]}" | sort | uniq -d)"
 
   print -r -- "check: every entry is inside a profile block"
