@@ -5,6 +5,8 @@ profile_script="$profile_home/scripts/profile"
 load_script="$profile_home/load.zsh"
 # Captured before any case narrows PATH, so the stubs always find zsh.
 zsh_bin="$(command -v zsh)"
+# Linked into the stub directory, because a developer Mac may hold jq outside system_path.
+jq_bin="$(command -v jq)"
 # Holds no brew or mise on a developer Mac or a CI runner, so only the stubs can run.
 system_path="/usr/bin:/bin"
 # TERM=dumb drops some sequences, so a colour terminal type makes the section escapes present.
@@ -47,24 +49,43 @@ EOF
 }
 
 # The exit code of the stubbed step <name> (git_pull, git_submodule, brew_bundle, mise,
-# brew_dry, brew_force, mise_dry, mise_yes).
+# brew_dry, brew_force, mise_ls, mise_yes).
 stub_exit() {
   print -r -- "$2" >"$stub_dir/$1_exit"
 }
 
-# Makes the dry run of <tool> (brew or mise) print a list and exit with 1. The Homebrew
-# output has a line before its first `Would ` line, a `--force` hint and a question,
-# which profile cleanup must not print.
+# Makes the list of <tool> (brew or mise) hold items. The Homebrew dry run exits with 1
+# and has a line before its first `Would ` line, a `--force` hint and a question, which
+# profile cleanup must not print. `mise ls --prunable --json` exits with 0 either way.
 stub_items() {
   case "$1" in
     brew)
       print -rl -- "==> BREW-PREAMBLE" "Would uninstall casks:" "orphan-cask" \
         "Would uninstall formulae:" "orphan-formula    other-formula" \
         'Run `brew bundle cleanup --force` to make these changes.' \
-        "Do you want to proceed? [y/n]" >"$stub_dir/brew_dry_out" ;;
-    mise) print -r -- "would remove node@18.20.0" >"$stub_dir/mise_dry_out" ;;
+        "Do you want to proceed? [y/n]" >"$stub_dir/brew_dry_out"
+      stub_exit brew_dry 1 ;;
+    mise)
+      print -r -- '{"node":[{"version":"18.20.0","requested_version":"18","installed":true}]}' \
+        >"$stub_dir/mise_ls_out" ;;
   esac
-  stub_exit "$1_dry" 1
+}
+
+# Leaves jq out of PATH: the stub directory loses its link, and system_path is replaced
+# by a directory that links every command of system_path except jq, because both
+# runners and macOS ship jq in /usr/bin, which the child cannot drop alone.
+remove_jq() {
+  rm -f "$stub_bin/jq"
+  no_jq_path="$HOME/no-jq-bin"
+  mkdir -p "$no_jq_path"
+  local dir entry
+  for dir in ${(s.:.)system_path}; do
+    for entry in "$dir"/*(N); do
+      [[ -e "$no_jq_path/${entry:t}" || -L "$no_jq_path/${entry:t}" ]] ||
+        ln -s "$entry" "$no_jq_path/${entry:t}"
+    done
+  done
+  rm -f "$no_jq_path/jq"
 }
 
 # The real Brewfile, so the scripts read the list of profiles that ships in the repo.
@@ -75,9 +96,12 @@ prepare_case() {
   cp "$profile_home/brew/Brewfile" "$fake_repo/brew/Brewfile"
 
   local step
-  for step in git_pull git_submodule brew_bundle mise brew_dry brew_force mise_dry mise_yes; do
+  for step in git_pull git_submodule brew_bundle mise brew_dry brew_force mise_ls mise_yes; do
     stub_exit "$step" 0
   done
+  print -r -- '{}' >"$stub_dir/mise_ls_out"
+  # A link, not a stub: jq is a helper, not a step, so it records no call.
+  ln -s "$jq_bin" "$stub_bin/jq"
 
   write_stub "$stub_bin/git" '
 [[ "$1" == -C ]] && shift 2
@@ -90,7 +114,8 @@ case "$1" in
     exit "$(<"$stub_dir/git_$1_exit")" ;;
 esac
 exit 0'
-  # A cleanup or prune call prints <step>_out, if any, instead of a STUB line.
+  # A cleanup, list or prune call prints <step>_out, if any, and <step>_err to stderr,
+  # instead of a STUB line.
   write_stub "$stub_bin/brew" '
 if [[ "$1" == bundle && "$2" == cleanup ]]; then
   step=brew_dry
@@ -105,10 +130,11 @@ if [[ "$1" == bundle ]]; then
 fi
 exit 0'
   write_stub "$stub_bin/mise" '
-if [[ "$1" == prune ]]; then
+if [[ "$1" == ls || "$1" == prune ]]; then
   step=mise_yes
-  (( ${@[(Ie)--dry-run-code]} )) && step=mise_dry
+  [[ "$1" == ls ]] && step=mise_ls
   [[ -f "$stub_dir/${step}_out" ]] && cat "$stub_dir/${step}_out"
+  [[ -f "$stub_dir/${step}_err" ]] && cat "$stub_dir/${step}_err" >&2
   exit "$(<"$stub_dir/${step}_exit")"
 fi
 print -r -- "STUB $call"
@@ -129,7 +155,7 @@ step_call() {
     mise) print -r -- "mise install" ;;
     brew_dry) print -r -- "brew bundle cleanup --file $brewfile" ;;
     brew_force) print -r -- "brew bundle cleanup --force --file $brewfile" ;;
-    mise_dry) print -r -- "mise prune --tools --dry-run-code" ;;
+    mise_ls) print -r -- "mise ls --prunable --json" ;;
     mise_yes) print -r -- "mise prune --tools --yes" ;;
   esac
 }
@@ -465,11 +491,11 @@ function test_cleanup_dry_runs() {
   collect_and_reset
 
   assert_equal "$rc" "0"
-  assert_equal "$calls" "$(step_calls_of brew_dry mise_dry)"
+  assert_equal "$calls" "$(step_calls_of brew_dry mise_ls)"
   assert_equal "$(details_of 'brew bundle cleanup*')" \
     "$(step_call brew_dry)|cwd=/|profiles=essentials dev|stdin=devnull"
-  assert_contains "$(details_of 'mise prune*')" "$(step_call mise_dry)|cwd=/|"
-  assert_contains "$(details_of 'mise prune*')" "|stdin=devnull"
+  assert_contains "$(details_of 'mise ls*')" "$(step_call mise_ls)|cwd=/|"
+  assert_contains "$(details_of 'mise ls*')" "|stdin=devnull"
   assert_equal "$(cleanup_sequence)" \
     "TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept"
   local word
@@ -493,19 +519,19 @@ function test_cleanup_answers() {
   local newline=$'\n'
   # <answers>|<tools with items>|<calls>|<cleanup sequence>
   for row in \
-    "y,y|brew mise|brew_dry brew_force mise_dry mise_yes|$both" \
-    "Y,Y|brew mise|brew_dry brew_force mise_dry mise_yes|$both" \
-    "y,|brew mise|brew_dry brew_force mise_dry|$both kept" \
-    "y|brew mise|brew_dry brew_force mise_dry|$both kept" \
-    ",y|brew mise|brew_dry mise_dry mise_yes|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question" \
-    "n,n|brew mise|brew_dry mise_dry|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
-    "|brew mise|brew_dry mise_dry|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
-    "<devnull>|brew mise|brew_dry mise_dry|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
-    "yes please,yes|brew mise|brew_dry mise_dry|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
-    "y|brew|brew_dry brew_force mise_dry|TITLE-brew brew-list brew-question TITLE-mise no-runtimes" \
-    "y|mise|brew_dry mise_dry mise_yes|TITLE-brew none TITLE-mise mise-list mise-question" \
-    "n,y|mise|brew_dry mise_dry|TITLE-brew none TITLE-mise mise-list mise-question kept" \
-    "y,y||brew_dry mise_dry|TITLE-brew none TITLE-mise no-runtimes"; do
+    "y,y|brew mise|brew_dry brew_force mise_ls mise_yes|$both" \
+    "Y,Y|brew mise|brew_dry brew_force mise_ls mise_yes|$both" \
+    "y,|brew mise|brew_dry brew_force mise_ls|$both kept" \
+    "y|brew mise|brew_dry brew_force mise_ls|$both kept" \
+    ",y|brew mise|brew_dry mise_ls mise_yes|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question" \
+    "n,n|brew mise|brew_dry mise_ls|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
+    "|brew mise|brew_dry mise_ls|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
+    "<devnull>|brew mise|brew_dry mise_ls|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
+    "yes please,yes|brew mise|brew_dry mise_ls|TITLE-brew brew-list brew-question kept TITLE-mise mise-list mise-question kept" \
+    "y|brew|brew_dry brew_force mise_ls|TITLE-brew brew-list brew-question TITLE-mise no-runtimes" \
+    "y|mise|brew_dry mise_ls mise_yes|TITLE-brew none TITLE-mise mise-list mise-question" \
+    "n,y|mise|brew_dry mise_ls|TITLE-brew none TITLE-mise mise-list mise-question kept" \
+    "y,y||brew_dry mise_ls|TITLE-brew none TITLE-mise no-runtimes"; do
     IFS='|' read -r given items steps sequence <<<"$row"
     prepare_case
     for tool in ${=items}; do
@@ -548,8 +574,8 @@ function test_cleanup_failures() {
   local row failing code steps
   # <stub>|<its exit code>|<calls>
   for row in 'brew_dry|3|brew_dry' 'brew_force|1|brew_dry brew_force' \
-    'mise_dry|3|brew_dry brew_force mise_dry' \
-    'mise_yes|1|brew_dry brew_force mise_dry mise_yes'; do
+    'mise_ls|3|brew_dry brew_force mise_ls' 'mise_ls|1|brew_dry brew_force mise_ls' \
+    'mise_yes|1|brew_dry brew_force mise_ls mise_yes'; do
     IFS='|' read -r failing code steps <<<"$row"
     prepare_case
     stub_items brew
@@ -584,6 +610,98 @@ function test_cleanup_homebrew_fails_with_no_list() {
   assert_contains "$err" "ERROR"
 }
 
+# Prints the lines of the output that hold only a <tool>@<version>, in order.
+listed_versions() {
+  local line
+  for line in "${(@f)out}"; do
+    [[ "$line" =~ '^[[:alnum:]_-]+@[0-9][0-9.]*$' ]] && print -r -- "$line"
+  done
+}
+
+# The list and its count come from the JSON on stdout of `mise ls --prunable --json`,
+# never from stderr, where mise writes its warnings and its dry-run list.
+function test_cleanup_mise_lists() {
+  test_case_title
+
+  local several='{"node":[{"version":"18.20.0","installed":true},{"version":"20.1.0","installed":true}],"go":[{"version":"1.22.0","installed":true}]}'
+  local one='{"node":[{"version":"18.20.0","installed":true}]}'
+  local row json noise given versions count steps sequence
+  local comma=','
+  local newline=$'\n'
+  # <mise ls stdout>|<mise ls stderr lines, separated by commas>|<answer>|<listed versions>|<count in the question, or - for none>|<calls>|<cleanup sequence>
+  for row in \
+    "$several||y|node@18.20.0 node@20.1.0 go@1.22.0|3|brew_dry mise_ls mise_yes|TITLE-brew none TITLE-mise mise-list mise-question" \
+    "$several||n|node@18.20.0 node@20.1.0 go@1.22.0|3|brew_dry mise_ls|TITLE-brew none TITLE-mise mise-list mise-question kept" \
+    "$one|mise WARN  deprecated setting${comma}go@1.21.0 would be pruned${comma}node@16.0.0 would be pruned|n|node@18.20.0|1|brew_dry mise_ls|TITLE-brew none TITLE-mise mise-list mise-question kept" \
+    "{}|mise WARN  deprecated setting|y||-|brew_dry mise_ls|TITLE-brew none TITLE-mise no-runtimes"; do
+    IFS='|' read -r json noise given versions count steps sequence <<<"$row"
+    prepare_case
+    print -r -- "$json" >"$stub_dir/mise_ls_out"
+    [[ -n "$noise" ]] && print -r -- "${noise//$comma/$newline}" >"$stub_dir/mise_ls_err"
+    answer="$given" run_profile "$HOME" cleanup
+    collect_and_reset
+
+    print -r -- "row: mise ls prints '$json', answer '$given'"
+    assert_equal "$rc" "0"
+    assert_equal "$calls" "$(step_calls_of ${=steps})"
+    assert_equal "$(cleanup_sequence)" "$sequence"
+    assert_equal "$(listed_versions)" "$(print -rl -- ${=versions})"
+    if [[ "$count" == - ]]; then
+      assert_not_contains "$out$err" "runtime versions?"
+    else
+      assert_contains "$out" "Remove these $count runtime versions? [y/N] "
+    fi
+    assert_contains "$(details_of 'mise ls*')" "$(step_call mise_ls)|cwd=/|"
+    assert_contains "$(details_of 'mise ls*')" "|stdin=devnull"
+    if [[ "$steps" == *mise_yes* ]]; then
+      assert_contains "$(details_of 'mise prune*')" "$(step_call mise_yes)|cwd=/|"
+      assert_contains "$(details_of 'mise prune*')" "|stdin=devnull"
+    fi
+  done
+}
+
+# mise exits with 1 on a config error too, and an unreadable list cannot be counted, so
+# each of these fails the command before any question or removal.
+function test_cleanup_mise_list_fails() {
+  test_case_title
+
+  local one='{"node":[{"version":"18.20.0","installed":true}]}'
+  local row json code jq_kind child_path
+  # <mise ls stdout, or - for none>|<mise ls exit code>|<jq: real, failing or missing>
+  for row in '-|1|real' 'not json {|0|real' "$one|0|failing" "$one|0|missing"; do
+    IFS='|' read -r json code jq_kind <<<"$row"
+    prepare_case
+    if [[ "$json" == - ]]; then
+      : >"$stub_dir/mise_ls_out"
+      # No "ERROR" here, so the check below sees the error of profile itself.
+      print -r -- "mise failed to parse config.toml: invalid TOML" >"$stub_dir/mise_ls_err"
+    else
+      print -r -- "$json" >"$stub_dir/mise_ls_out"
+    fi
+    stub_exit mise_ls "$code"
+    child_path="$system_path"
+    case "$jq_kind" in
+      failing)
+        rm -f "$stub_bin/jq"
+        print -rl -- "#!$zsh_bin -f" 'print -r -- "jq: stub failure" >&2' 'exit 5' >"$stub_bin/jq"
+        chmod +x "$stub_bin/jq" ;;
+      missing)
+        remove_jq
+        child_path="$no_jq_path"
+        assert_empty "$(env -i PATH="$stub_bin:$child_path" "$zsh_bin" -fc 'whence -p jq')" ;;
+    esac
+    answer=$'y\ny' system_path="$child_path" run_profile "$HOME" cleanup
+    collect_and_reset
+
+    print -r -- "row: mise ls prints '$json' and exits with $code, jq $jq_kind"
+    assert_equal "$rc" "1"
+    assert_equal "$calls" "$(step_calls_of brew_dry mise_ls)"
+    assert_contains "$(cleanup_sequence)" "TITLE-mise"
+    assert_not_contains "$out$err" "runtime versions?"
+    assert_contains "$err" "ERROR"
+  done
+}
+
 # A skipped tool prints its title, then a warning that names it, asks no question, reads
 # no answer line and does not change the exit code.
 function test_cleanup_missing_tools() {
@@ -593,8 +711,8 @@ function test_cleanup_missing_tools() {
   local row removed items steps expected line entry
   local -a sequence
   # <stubs removed>|<tools with items>|<calls>|<titles, and lines that name brew or mise>
-  for row in 'brew mise|||TITLE brew TITLE mise' 'brew||mise_dry|TITLE brew TITLE' \
-    'mise||brew_dry|TITLE TITLE mise' 'brew|mise|mise_dry mise_yes|TITLE brew TITLE' \
+  for row in 'brew mise|||TITLE brew TITLE mise' 'brew||mise_ls|TITLE brew TITLE' \
+    'mise||brew_dry|TITLE TITLE mise' 'brew|mise|mise_ls mise_yes|TITLE brew TITLE' \
     'mise|brew|brew_dry brew_force|TITLE TITLE mise'; do
     IFS='|' read -r removed items steps expected <<<"$row"
     prepare_case
@@ -690,6 +808,8 @@ run_test test_cleanup_dry_runs
 run_test test_cleanup_answers
 run_test test_cleanup_failures
 run_test test_cleanup_homebrew_fails_with_no_list
+run_test test_cleanup_mise_lists
+run_test test_cleanup_mise_list_fails
 run_test test_cleanup_missing_tools
 run_test test_changed_script_takes_effect_next_run
 run_test test_load_exposes_profile_command_without_alias
