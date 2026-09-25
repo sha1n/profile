@@ -505,6 +505,10 @@ function __profile_cmd_print_named_list() {
 
 # Removes the `<type>:<name>` candidates: casks, then formulae, then taps, because a cask
 # can depend on a formula, and a tap cannot go while one of its packages is installed.
+# `brew uninstall` autoremoves by default, which can drop a profile formula that was
+# installed as a dependency, so both uninstalls turn it off; a dependency that no profile
+# lists shows up in the next cleanup. Without `--force`, a formula with more than one
+# installed version keeps its other versions, and the later untap then fails.
 function __profile_cmd_remove_packages() {
   emulate -L zsh
   local -a casks=("${(@f)$(__profile_cmd_names_of_type cask "$@")}")
@@ -513,10 +517,11 @@ function __profile_cmd_remove_packages() {
   casks=("${(@)casks:#}") formulae=("${(@)formulae:#}") taps=("${(@)taps:#}")
 
   if (( ${#casks} )); then
-    (cd / && brew uninstall --cask "${casks[@]}" </dev/null) || return 1
+    (cd / && HOMEBREW_NO_AUTOREMOVE=1 brew uninstall --cask "${casks[@]}" </dev/null) || return 1
   fi
   if (( ${#formulae} )); then
-    (cd / && brew uninstall --formula "${formulae[@]}" </dev/null) || return 1
+    (cd / && HOMEBREW_NO_AUTOREMOVE=1 brew uninstall --formula --force "${formulae[@]}" </dev/null) ||
+      return 1
   fi
   if (( ${#taps} )); then
     (cd / && brew untap "${taps[@]}" </dev/null) || return 1

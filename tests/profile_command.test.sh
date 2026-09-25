@@ -25,8 +25,9 @@ section_background() {
 }
 
 # Each stub appends its call to <stub_dir>/calls and one line of details to
-# <stub_dir>/details: the call, its working directory, the value of
-# HOMEBREW_PROFILE_INSTALL_PROFILES, and whether stdin is /dev/null. The stdin check
+# <stub_dir>/details: the call, its working directory, the values of
+# HOMEBREW_PROFILE_INSTALL_PROFILES and HOMEBREW_NO_AUTOREMOVE, and whether stdin is
+# /dev/null. The stdin check
 # compares the device number of fd 0 with that of /dev/null through zsh/stat, which
 # works the same on macOS and Linux; the runner feeds a pipe, whose rdev is 0.
 # Every stub that stands for a step prints "STUB <call>" to stdout, so the order of
@@ -42,8 +43,9 @@ call="${0:t}${*:+ $*}"
 stdin_kind=other
 [[ "$(zstat -f 0 +rdev 2>/dev/null)" == "$(zstat +rdev /dev/null)" ]] && stdin_kind=devnull
 profiles_value="${HOMEBREW_PROFILE_INSTALL_PROFILES-<unset>}"
+no_autoremove_value="${HOMEBREW_NO_AUTOREMOVE-<unset>}"
 print -r -- "$call" >>"$stub_dir/calls"
-print -r -- "$call|cwd=$(pwd -P)|profiles=$profiles_value|stdin=$stdin_kind" >>"$stub_dir/details"
+print -r -- "$call|cwd=$(pwd -P)|profiles=$profiles_value|no_autoremove=$no_autoremove_value|stdin=$stdin_kind" >>"$stub_dir/details"
 EOF
     print -r -- "$body"
   } >"$target"
@@ -216,7 +218,7 @@ step_call() {
     mise) print -r -- "mise install" ;;
     brew_dry) print -r -- "brew bundle cleanup --formula --cask --tap --file $brewfile" ;;
     brew_rm_cask) print -r -- "brew uninstall --cask orphan-cask" ;;
-    brew_rm_formula) print -r -- "brew uninstall --formula orphan-formula other-formula" ;;
+    brew_rm_formula) print -r -- "brew uninstall --formula --force orphan-formula other-formula" ;;
     brew_untap) print -r -- "brew untap orphan/tap" ;;
     mise_ls) print -r -- "mise ls --prunable --json" ;;
     mise_yes) print -r -- "mise prune --tools --yes" ;;
@@ -292,6 +294,13 @@ collect_and_reset() {
   lines=("${(@)lines:#brew info *}")
   calls="$(print -rl -- "${(@)lines:#git( -C [^ ]##| --git-dir=[^ ]##)# (config|rev-parse|status|rev-list)(| *)}")"
   reset_home
+}
+
+# Prints the `brew bundle cleanup` calls, so a case can check that none of them
+# carries `--force`: the removal is one `brew uninstall` or `brew untap` command per type.
+bundle_cleanup_calls() {
+  local -a lines=("${(f)calls}")
+  print -rl -- "${(@M)lines:#brew bundle cleanup*}"
 }
 
 # Prints the details line of each call that matches <pattern>.
@@ -434,7 +443,7 @@ function test_install_dev() {
   # Exact calls, so neither brew bundle cleanup nor install.sh ran.
   assert_equal "$calls" "$(step_calls_of brew mise)"
   assert_equal "$(title_and_step_sequence)" "$(expected_sequence brew mise)"
-  assert_contains "$(details_of 'brew bundle*')" "|profiles=dev|stdin=devnull"
+  assert_contains "$(details_of 'brew bundle*')" "|profiles=dev|no_autoremove=<unset>|stdin=devnull"
   assert_contains "$(details_of 'mise install*')" "mise install|cwd=/|"
   assert_contains "$(details_of 'mise install*')" "|stdin=devnull"
   assert_equal "$config_dir_exists" "false"
@@ -578,7 +587,7 @@ function test_cleanup_dry_runs() {
   assert_equal "$rc" "0"
   assert_equal "$calls" "$(step_calls_of brew_dry mise_ls)"
   assert_equal "$(details_of 'brew bundle cleanup*')" \
-    "$(step_call brew_dry)|cwd=/|profiles=$all_profiles|stdin=devnull"
+    "$(step_call brew_dry)|cwd=/|profiles=$all_profiles|no_autoremove=<unset>|stdin=devnull"
   assert_contains "$(details_of 'mise ls*')" "$(step_call mise_ls)|cwd=/|"
   assert_contains "$(details_of 'mise ls*')" "|stdin=devnull"
   assert_equal "$(cleanup_sequence)" \
@@ -632,8 +641,7 @@ function test_cleanup_answers() {
     assert_equal "$rc" "0"
     assert_equal "$calls" "$(step_calls_of ${=steps})"
     assert_not_contains "$calls" "--zap"
-    # The removal is one command per type, never a `brew bundle cleanup --force` run.
-    assert_not_contains "$calls" "--force"
+    assert_not_contains "$(bundle_cleanup_calls)" "--force"
     assert_equal "$(cleanup_sequence)" "$sequence"
     if (( ${${=items}[(Ie)brew]} )); then
       assert_contains "$out" "Remove these 4 Homebrew packages? [y/N] "
@@ -649,6 +657,11 @@ function test_cleanup_answers() {
       for step in ${=brew_rm}; do
         assert_contains "$(details_of "$(step_call "$step")|*")" "$(step_call "$step")|cwd=/|"
         assert_contains "$(details_of "$(step_call "$step")|*")" "|stdin=devnull"
+      done
+      # `brew uninstall` autoremoves by default, and autoremove can drop a profile
+      # formula that was installed as a dependency, so each uninstall turns it off.
+      for step in brew_rm_cask brew_rm_formula; do
+        assert_contains "$(details_of "$(step_call "$step")|*")" "|no_autoremove=1|"
       done
     fi
     if [[ "$steps" == *mise_yes* ]]; then
@@ -685,7 +698,7 @@ function test_cleanup_failures() {
     print -r -- "row: $failing exits with $code"
     assert_equal "$rc" "1"
     assert_equal "$calls" "$(step_calls_of ${=steps})"
-    assert_not_contains "$calls" "--force"
+    assert_not_contains "$(bundle_cleanup_calls)" "--force"
     assert_contains "$err" "ERROR"
     if [[ "$steps" != *brew_rm_cask* ]]; then
       assert_not_contains "$out$err" "Homebrew packages?"
@@ -727,9 +740,9 @@ function test_cleanup_keeps_profile_packages() {
   local -a kept_lines listed
   # <profile entries>|<candidates of the dry run>|<candidate whose names cannot be read, or ->|<kept warnings, separated by commas>|<count in the question, or - for none>|<removal calls, separated by commas>
   for row in \
-    "$vscode cask:docker-desktop|cask:visual-studio-code cask:docker cask:orphan-cask formula:orphan-formula|-|visual-studio-code: a profile lists it,docker: a profile lists it|2|brew uninstall --cask orphan-cask,brew uninstall --formula orphan-formula" \
-    "$bert|formula:bert formula:orphan-formula|-|bert: a profile lists it|1|brew uninstall --formula orphan-formula" \
-    "$bert|cask:orphan-cask formula:orphan-formula|orphan-cask|orphan-cask: its names could not be read|1|brew uninstall --formula orphan-formula" \
+    "$vscode cask:docker-desktop|cask:visual-studio-code cask:docker cask:orphan-cask formula:orphan-formula|-|visual-studio-code: a profile lists it,docker: a profile lists it|2|brew uninstall --cask orphan-cask,brew uninstall --formula --force orphan-formula" \
+    "$bert|formula:bert formula:orphan-formula|-|bert: a profile lists it|1|brew uninstall --formula --force orphan-formula" \
+    "$bert|cask:orphan-cask formula:orphan-formula|orphan-cask|orphan-cask: its names could not be read|1|brew uninstall --formula --force orphan-formula" \
     "$vscode $bert|cask:visual-studio-code formula:bert|-|visual-studio-code: a profile lists it,bert: a profile lists it|-|" \
     "tap:sha1n/tap|tap:sha1n/tap tap:orphan/tap|-|sha1n/tap: a profile lists it|1|brew untap orphan/tap" \
     "$bert|tap:sha1n/tap tap:orphan/tap|-|sha1n/tap: a profile lists it|1|brew untap orphan/tap"; do
@@ -749,7 +762,7 @@ function test_cleanup_keeps_profile_packages() {
     assert_equal "$calls" "$(step_call brew_dry
       [[ -n "$removals" ]] && print -rl -- "${(@s:,:)removals}"
       step_call mise_ls)"
-    assert_not_contains "$calls" "--force"
+    assert_not_contains "$(bundle_cleanup_calls)" "--force"
     assert_contains "$(cleanup_sequence)" "TITLE-mise"
 
     print -r -- "check: the warnings, in list order, come before the result"
@@ -777,7 +790,7 @@ function test_cleanup_keeps_profile_packages() {
 
     print -r -- "check: the entries of every profile, and the names of each candidate"
     assert_equal "$(details_of 'brew bundle list*' | sort)" "$(for word in formula cask tap; do
-      print -r -- "brew bundle list --$word --file $brewfile|cwd=/|profiles=$all_profiles|stdin=devnull"
+      print -r -- "brew bundle list --$word --file $brewfile|cwd=/|profiles=$all_profiles|no_autoremove=<unset>|stdin=devnull"
     done | sort)"
     for word in ${=candidates}; do
       [[ "$word" == tap:* ]] && continue
