@@ -4,6 +4,8 @@ source "$SHA1N_PROFILE_TESTS_HOME/sandbox.zsh"
 brewfile="$profile_home/brew/Brewfile"
 brew_bin="$(command -v brew)"
 entry_keywords='brew|cask|uv|mas|vscode|whalebrew|go|cargo|npm|flatpak|krew'
+# Work-only apps are installed by hand; the runtimes come from mise, not Homebrew.
+never_listed='slack zoom go nvm node maven pipx'
 process_or_file_load='`|%x|\b(IO\.|File\.|Open3|Kernel\.|Process\.|system|exec|spawn|fork|popen|require|require_relative|load|eval|instance_eval|class_eval|zsh|bash)\b'
 
 # `brew bundle list` only evaluates the Brewfile and prints entry names: it does
@@ -87,16 +89,27 @@ function test_no_process_or_file_load() {
   assert_empty "$(print -r -- "$dsl_sample" | strip_strings_and_comments | grep -nE "$process_or_file_load" || true)"
 }
 
+# Reads files only, so it runs without brew (e.g. on Linux CI).
+function test_profile_chain() {
+  test_case_title
+
+  # The order of `known` is the chain: a profile applies every profile before it.
+  assert_equal "$(known_profiles_of "$brewfile")" "essentials dev workstation"
+}
+
+# Each profile applies the profiles before it in the chain. Work-only apps and the
+# language runtimes (mise owns them) are listed by no profile.
 function test_profile_selection() {
   test_case_title
 
   local row value expected_rc present absent output exit_code entry
   # <HOMEBREW_PROFILE_INSTALL_PROFILES, or <unset>>|<exit code>|<present entries or text>|<absent entries>
-  for row in '<unset>|0|bat goreleaser shellcheck mise sha1n/tap|' \
-    '|0|bat goreleaser shellcheck mise sha1n/tap|' \
-    'essentials|0|bat uv sha1n/tap|goreleaser shellcheck mise' \
-    'dev|0|bat uv goreleaser shellcheck mise sha1n/tap|' \
-    'essentials dev|0|bat mise|go nvm node maven pipx' \
+  for row in '<unset>|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
+    '|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
+    'essentials|0|bat uv visual-studio-code sha1n/tap|mise docker-desktop goreleaser shellcheck' \
+    'dev|0|mise uv goreleaser shellcheck|docker-desktop' \
+    'workstation|0|docker-desktop mise uv visual-studio-code|' \
+    'essentials workstation|0|docker-desktop mise uv visual-studio-code|' \
     'dev bogus|1|bogus|'; do
     IFS='|' read -r value expected_rc present absent <<<"$row"
     if [[ "$value" == "<unset>" ]]; then
@@ -112,7 +125,7 @@ function test_profile_selection() {
       for entry in ${=present}; do
         assert_has_entry "$output" "$entry"
       done
-      for entry in ${=absent}; do
+      for entry in ${=absent} ${=never_listed}; do
         assert_lacks_entry "$output" "$entry"
       done
       assert_empty "$(print -r -- "$output" | sort | uniq -d)"
@@ -122,11 +135,15 @@ function test_profile_selection() {
       assert_contains "$output" "$present"
     fi
   done
+
+  print -r -- "check: a name with one before it in the chain changes nothing"
+  assert_equal "$(brew_bundle_list 'essentials workstation')" "$(brew_bundle_list workstation)"
 }
 
 setup
 run_test test_brewfile_layout
 run_test test_no_process_or_file_load
+run_test test_profile_chain
 if [[ -z "$brew_bin" ]]; then
   echo "# brew is not on PATH; skipping Brewfile evaluation cases"
 else
