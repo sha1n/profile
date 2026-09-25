@@ -3,6 +3,7 @@
 - [Profile](#profile)
 - [What's in the Box?](#whats-in-the-box)
 - [Installation](#installation)
+- [New Mac](#new-mac)
 - [Update](#update)
 - [Why not Oh-My-Zsh, Zim or Something else?](#why-not-oh-my-zsh-zim-or-something-else)
 - [Can I Use This Repository to Configure My Own Zsh?](#can-i-use-this-repository-to-configure-my-own-zsh)
@@ -39,12 +40,51 @@ The installation script does two things:
    - If the file doesn't exist, it creates it
    - If `~/.zshrc` exists and a file named `load.zsh` is already sourced from it, aborts
 
+Each step of the installation script starts with a section title. If a target file already exists, the script asks before it replaces it.
+
+# New Mac
+One command sets up a new Mac. It installs Homebrew, clones this repository to `~/code/profile`, runs `install.sh`, and installs the tools of the profiles that you name.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh | zsh -s -- dev
+```
+
+| Profile | Contents |
+|---|---|
+| `essentials` | CLI core, editors, git tools, terminal, personal apps, and `uv` for Python CLI tools |
+| `dev` | Development tools and apps, and mise with the Go, Python, Node.js, Java and Maven runtimes. Includes `essentials` |
+
+After the bootstrap, do these steps by hand: `gh auth login`, create an SSH key and add it with `gh ssh-key add`, and turn on VS Code Settings Sync. The bootstrap prints them at the end.
+
+## Set up with an agent
+To let a coding agent set up a machine, tell it: *"Set up this machine with the profile at https://github.com/sha1n/profile. Follow the 'Set up with an agent' section of its README."*
+
+Agent, do these steps in order. Each step ends only when its check passes.
+
+1. **Ask for the profiles.** Show the user the profile table above, and ask which profiles apply. Check: the user confirmed `essentials` or `dev` (`dev` includes `essentials`).
+2. **Apply them.**
+   - If `~/code/profile` does not exist, give the user the bootstrap command with the profiles. The user runs it in a terminal, because it can ask for the `sudo` password. Wait until the user says it is done, and read its output.
+   - If it exists, run `profile update`, then `profile install <profiles>`.
+
+   Check: each command exits with 0.
+3. **Verify.** Run `HOMEBREW_PROFILE_INSTALL_PROFILES="<profiles>" brew bundle check --no-upgrade --file ~/code/profile/brew/Brewfile`. If `dev` applies, in a new login shell, `mise ls` shows the runtimes, and `command -v` of `node`, `python3`, `go` and `java` shows a mise path. Check: all these checks pass, or you told the user which check failed.
+4. **Hand over the manual steps** above. They need a browser or a password, so the user does them. Check: the user has the list.
 
 # Update
-Since all external plugins are sourced as git submodules, updating everything that's included in this setup is as simple as pulling the repository recursively. To make this even easier, an alias named `update_profile` is registered to take care of that with a single command.
+The `profile` command updates this repository and installs the tools of the machine profiles. Run it from any directory.
+
 ```bash
-update_profile
+profile update                   # pull the current branch and update the submodules
+profile install                  # install the Homebrew packages of essentials
+profile install dev              # install the packages of dev and essentials, then the mise runtimes
+profile cleanup                  # list what no profile needs, ask, then remove it
 ```
+
+`profile install` stores no selection: each run applies only the profiles that you name. `dev` always includes `essentials`. It never removes packages.
+
+`profile cleanup` has a Homebrew section and a mise section. Each section lists what it would remove: the Homebrew packages that no profile lists, and the mise versions that no config uses. Then it asks its own question, such as `Remove these 6 Homebrew packages? [y/N]`, and it removes that list only if you answer `y`. You can remove one list and keep the other. It always compares against every profile, so it never offers to remove the packages of a profile. The list also shows packages that you installed by hand and never added to the Brewfile, so read it before you answer. A plain `brew bundle` command with no `HOMEBREW_PROFILE_INSTALL_PROFILES` also applies every profile.
+
+`profile update` does not run `install.sh`. Run `install.sh` again after an update that adds a link.
 
 # Why not Oh-My-Zsh, Zim or Something else?
 I've been using Oh-My-Zsh happily for many years and I could continue using it forever. I created this repository for several reasons.
