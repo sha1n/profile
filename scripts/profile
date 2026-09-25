@@ -363,46 +363,210 @@ function __profile_cmd_confirm() {
   [[ "$answer" == [yY] ]]
 }
 
+# Prints the cask, formula and tap candidates of the list-only run output <output> as
+# `<type>:<name>` words, in Homebrew's order.
+function __profile_cmd_cleanup_candidates() {
+  emulate -L zsh
+  setopt local_options extended_glob
+  local line type=""
+  local -a tokens=()
+
+  for line in "${(@f)1}"; do
+    case "$line" in
+      "Would uninstall casks:") type=cask; continue ;;
+      "Would uninstall formulae:") type=formula; continue ;;
+      "Would untap:") type=tap; continue ;;
+      "Would "*) type=""; continue ;;
+    esac
+    [[ -n "$type" ]] || continue
+    # Homebrew prints several names per line, in columns; a line of other text ends the section.
+    tokens=(${=line})
+    if (( ${#${(@)tokens:#[A-Za-z0-9@._+/-]##}} )); then
+      type=""
+      continue
+    fi
+    (( ${#tokens} )) && print -rl -- "${(@)tokens/#/${type}:}"
+  done
+  return 0
+}
+
+# Prints the names of the given `<type>:<name>` words that have <type>.
+function __profile_cmd_names_of_type() {
+  emulate -L zsh
+  local type="$1"
+  shift
+  local -a names=(${${(M)@:#${type}:*}#${type}:})
+  (( ${#names} )) && print -rl -- "${names[@]}"
+  return 0
+}
+
+# Prints each given name, and its part after the last `/`, once.
+function __profile_cmd_with_short_names() {
+  emulate -L zsh
+  local -a names=("$@")
+  names=("${(@)names:#}")
+  names+=("${(@)names:t}")
+  (( ${#names} )) && print -rl -- "${(@u)names}"
+  return 0
+}
+
+# Prints one `<type>:<entry>` word per Brewfile entry of <profiles> (type: formula, cask or tap).
+function __profile_cmd_profile_entries() {
+  emulate -L zsh
+  local profiles="$1" brewfile="$2" type output="" line
+
+  for type in formula cask tap; do
+    output="$(cd / && HOMEBREW_PROFILE_INSTALL_PROFILES="$profiles" \
+      brew bundle list --$type --file "$brewfile" </dev/null)" || return 1
+    for line in "${(@f)output}"; do
+      [[ -n "$line" ]] && print -r -- "${type}:${line}"
+    done
+  done
+  return 0
+}
+
+# Prints every name under which Homebrew knows the <kind> (cask or formula) <name>:
+# the given one, then its current, full, old and alias names. Fails when they cannot be read.
+function __profile_cmd_package_names() {
+  emulate -L zsh
+  local kind="$1" name="$2" json="" filter="" names=""
+
+  (( $+commands[jq] )) || return 1
+  json="$(cd / && brew info --json=v2 --$kind "$name" </dev/null 2>/dev/null)" || return 1
+  case "$kind" in
+    cask) filter='.casks[] | .token, .full_token, .old_tokens[]' ;;
+    formula) filter='.formulae[] | .name, .full_name, .aliases[], .oldnames[]' ;;
+  esac
+  names="$(print -r -- "$json" | jq -r "$filter")" || return 1
+  print -rl -- "$name" "${(@f)names}"
+}
+
+# Prints the `<type>:<name>` candidates that no profile lists, casks first, then formulae,
+# then taps, and warns about each kept one. Homebrew matches a Brewfile entry against
+# an installed package by one name only, so a cask under its old token or a tapped formula
+# by its short name would otherwise be removed. Fails when the entries cannot be listed.
+function __profile_cmd_unlisted_candidates() {
+  emulate -L zsh
+  local profiles="$1" brewfile="$2" entries="" word type name
+  local -a entry_names=() entry_taps=() names=()
+  shift 2
+
+  entries="$(__profile_cmd_profile_entries "$profiles" "$brewfile")" ||
+    { __profile_log_error "the profile entries could not be listed" >&2; return 1; }
+  for word in "${(@f)entries}"; do
+    [[ -n "$word" ]] || continue
+    type="${word%%:*}" name="${word#*:}"
+    entry_names+=("$name")
+    if [[ "$type" == tap ]]; then
+      entry_taps+=("$name")
+    elif [[ "$name" == */*/* ]]; then
+      entry_taps+=("${name:h}")
+    fi
+  done
+  entry_names=("${(@f)$(__profile_cmd_with_short_names "${entry_names[@]}")}")
+
+  for type in cask formula; do
+    for name in "${(@f)$(__profile_cmd_names_of_type "$type" "$@")}"; do
+      [[ -n "$name" ]] || continue
+      if ! names=("${(@f)$(__profile_cmd_package_names "$type" "$name")}"); then
+        __profile_log_warn "kept $name: its names could not be read" >&2
+        continue
+      fi
+      names=("${(@f)$(__profile_cmd_with_short_names "${names[@]}")}")
+      if (( ${#${(@)names:*entry_names}} )); then
+        __profile_log_warn "kept $name: a profile lists it" >&2
+        continue
+      fi
+      print -r -- "${type}:${name}"
+    done
+  done
+  for name in "${(@f)$(__profile_cmd_names_of_type tap "$@")}"; do
+    [[ -n "$name" ]] || continue
+    if (( ${entry_taps[(Ie)$name]} )); then
+      __profile_log_warn "kept $name: a profile lists it" >&2
+      continue
+    fi
+    print -r -- "tap:${name}"
+  done
+  return 0
+}
+
+# Prints <heading>, then each given name on its own line indented by two spaces; nothing
+# when no name is given.
+function __profile_cmd_print_named_list() {
+  emulate -L zsh
+  local heading="$1"
+  shift
+  local -a names=("${(@)@:#}")
+  (( ${#names} )) || return 0
+  print -r -- "$heading"
+  print -rl -- "${(@)names/#/  }"
+}
+
+# Removes the `<type>:<name>` candidates: casks, then formulae, then taps, because a cask
+# can depend on a formula, and a tap cannot go while one of its packages is installed.
+function __profile_cmd_remove_packages() {
+  emulate -L zsh
+  local -a casks=("${(@f)$(__profile_cmd_names_of_type cask "$@")}")
+  local -a formulae=("${(@f)$(__profile_cmd_names_of_type formula "$@")}")
+  local -a taps=("${(@f)$(__profile_cmd_names_of_type tap "$@")}")
+  casks=("${(@)casks:#}") formulae=("${(@)formulae:#}") taps=("${(@)taps:#}")
+
+  if (( ${#casks} )); then
+    (cd / && brew uninstall --cask "${casks[@]}" </dev/null) || return 1
+  fi
+  if (( ${#formulae} )); then
+    (cd / && brew uninstall --formula "${formulae[@]}" </dev/null) || return 1
+  fi
+  if (( ${#taps} )); then
+    (cd / && brew untap "${taps[@]}" </dev/null) || return 1
+  fi
+}
+
 function __profile_cmd_cleanup_brew() {
   emulate -L zsh
   local profiles="$1" brewfile="$__profile_repo/brew/Brewfile"
-  local output="" line
-  local -a list=() names=()
-  local -i code printing=0
+  local output=""
+  local -a candidates=()
+  local -i code
 
-  # Homebrew 6 asks before it removes; with stdin from /dev/null it cannot ask,
-  # so this run only lists and exits with 1.
+  # Homebrew 6 asks before it removes; with stdin from /dev/null it cannot ask, so this
+  # run only lists and exits with 1. Formulae, casks and taps only: without the type
+  # options Homebrew also offers every uv tool, extension and the like that no entry names.
   output="$(cd / && HOMEBREW_PROFILE_INSTALL_PROFILES="$profiles" \
-    brew bundle cleanup --file "$brewfile" </dev/null)"
+    brew bundle cleanup --formula --cask --tap --file "$brewfile" </dev/null)"
   code=$?
   if (( code > 1 )); then
     __profile_log_error "the package list failed with exit code $code" >&2
     return 1
   fi
-  for line in "${(@f)output}"; do
-    [[ "$line" == "Would "* ]] && printing=1
-    (( printing )) || continue
-    [[ "$line" == *--force* || "$line" == *proceed* ]] && continue
-    list+=("$line")
-    [[ "$line" == "Would "* ]] || names+=(${=line})
-  done
-
-  # A list-only run that exits with 1 always prints a `Would ` line, so its absence means Homebrew failed.
-  if (( code == 1 && ! printing )); then
+  candidates=("${(@f)$(__profile_cmd_cleanup_candidates "$output")}")
+  candidates=("${(@)candidates:#}")
+  # A list-only run that exits with 1 always prints a list, so its absence means Homebrew failed.
+  if (( code == 1 && ! ${#candidates} )); then
     __profile_log_error "Homebrew failed with no package list (exit code $code)" >&2
     return 1
   fi
-  if (( ! ${#names} )); then
+  if (( ${#candidates} )); then
+    candidates=("${(@f)$(__profile_cmd_unlisted_candidates "$profiles" "$brewfile" "${candidates[@]}")}") ||
+      return 1
+    candidates=("${(@)candidates:#}")
+  fi
+  if (( ! ${#candidates} )); then
     __profile_log_info "nothing to remove"
     return 0
   fi
-  print -rl -- "${list[@]}"
-  if ! __profile_cmd_confirm "Remove these ${#names} Homebrew packages?"; then
+
+  __profile_cmd_print_named_list "casks:" "${(@f)$(__profile_cmd_names_of_type cask "${candidates[@]}")}"
+  __profile_cmd_print_named_list "formulae:" "${(@f)$(__profile_cmd_names_of_type formula "${candidates[@]}")}"
+  __profile_cmd_print_named_list "taps:" "${(@f)$(__profile_cmd_names_of_type tap "${candidates[@]}")}"
+  if ! __profile_cmd_confirm "Remove these ${#candidates} Homebrew packages?"; then
     __profile_log_info "nothing removed"
     return 0
   fi
-  (cd / && HOMEBREW_PROFILE_INSTALL_PROFILES="$profiles" \
-    brew bundle cleanup --force --file "$brewfile" </dev/null) ||
+  # The list-only run is not repeated with --force: Homebrew would compute its own list
+  # again, without the guard above.
+  __profile_cmd_remove_packages "${candidates[@]}" ||
     { __profile_log_error "the package removal failed" >&2; return 1; }
 }
 
