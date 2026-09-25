@@ -173,20 +173,27 @@ function __profile_cmd_cleanup_brew() {
 
 function __profile_cmd_cleanup_mise() {
   emulate -L zsh
-  local output=""
-  local -i code
+  local json="" list=""
 
-  output="$(cd / && mise prune --tools --dry-run-code </dev/null)"
-  code=$?
-  case $code in
-    0) __profile_log_info "no unused runtime versions"; return 0 ;;
-    1) ;;
-    *) __profile_log_error "the runtime list failed with exit code $code" >&2; return 1 ;;
-  esac
+  # mise writes the `prune --dry-run` list to stderr, and `--dry-run-code` exits with 1
+  # both when versions are prunable and on a config error, so only this JSON is reliable.
+  json="$(cd / && mise ls --prunable --json </dev/null)" ||
+    { __profile_log_error "the runtime list failed with exit code $?" >&2; return 1; }
+  if (( ! $+commands[jq] )); then
+    __profile_log_error "jq is not on PATH, so the runtime list cannot be read" >&2
+    return 1
+  fi
+  list="$(print -r -- "$json" |
+    jq -r 'to_entries[] | .key as $tool | .value[] | "\($tool)@\(.version)"')" ||
+    { __profile_log_error "the runtime list could not be read" >&2; return 1; }
 
-  print -r -- "$output"
-  local -a versions=("${(@f)output}")
+  local -a versions=("${(@f)list}")
   versions=("${(@)versions:#}")
+  if (( ! ${#versions} )); then
+    __profile_log_info "no unused runtime versions"
+    return 0
+  fi
+  print -rl -- "${versions[@]}"
   if ! __profile_cmd_confirm "Remove these ${#versions} runtime versions?"; then
     __profile_log_info "nothing removed"
     return 0
