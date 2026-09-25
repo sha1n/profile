@@ -62,8 +62,11 @@ curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh |
 
 | Profile | Contents |
 |---|---|
-| `essentials` | CLI core, editors, git tools, terminal, personal apps, and `uv` for Python CLI tools |
+| `essentials` | CLI core, editors, git tools, terminal, personal apps, `visual-studio-code`, and `uv` for Python CLI tools |
 | `dev` | Development tools and apps, and mise with the Go, Python, Node.js, Java and Maven runtimes. Includes `essentials` |
+| `workstation` | Docker Desktop, for machines that do significant development work. Includes `dev` |
+
+The profiles form one chain: `essentials` < `dev` < `workstation`. Each profile includes every profile before it. Slack and Zoom are not in any profile: install them by hand on the machines that need them.
 
 mise owns the language runtimes. Their versions are in [config/mise/profile.toml](config/mise/profile.toml), which `install.sh` links to `~/.config/mise/conf.d/profile.toml`. Homebrew installs no runtime. Python CLI tools install as uv tools (`uv "<tool>"` in the Brewfile, or `uv tool install <tool>`), not with `pipx` or a Homebrew formula. The shell exports `PIP_REQUIRE_VIRTUALENV=true`, so `pip install` works only inside a virtualenv.
 
@@ -74,13 +77,13 @@ To let a coding agent set up a machine, tell it: *"Set up this machine with the 
 
 Agent, do these steps in order. Each step ends only when its check passes.
 
-1. **Ask for the profiles.** Show the user the profile table above, and ask which profiles apply. Check: the user confirmed `essentials` or `dev` (`dev` includes `essentials`).
+1. **Ask for the profiles.** Show the user the profile table above, and ask which profile applies. Check: the user confirmed `essentials`, `dev` or `workstation` (each includes the profiles before it in the chain).
 2. **Apply them.**
    - If `~/code/profile` does not exist, give the user the bootstrap command with the profiles. The user runs it in a terminal, because it can ask for the `sudo` password. Wait until the user says it is done, and read its output.
    - If it exists, run `profile update`, then `profile install <profiles>`. When `profile` is not on `PATH` yet, run `~/code/profile/scripts/profile` instead.
 
    Check: each command exits with 0.
-3. **Verify.** Run `HOMEBREW_PROFILE_INSTALL_PROFILES="<profiles>" brew bundle check --no-upgrade --file ~/code/profile/brew/Brewfile`. If `dev` applies, in a new login shell, `mise ls` shows the runtimes, and `command -v` of `node`, `python3`, `go` and `java` shows a mise path. Check: all these checks pass, or you told the user which check failed.
+3. **Verify.** Run `HOMEBREW_PROFILE_INSTALL_PROFILES="<profiles>" brew bundle check --no-upgrade --file ~/code/profile/brew/Brewfile`. If `dev` or `workstation` applies, in a new login shell, `mise ls` shows the runtimes, and `command -v` of `node`, `python3`, `go` and `java` shows a mise path. Check: all these checks pass, or you told the user which check failed.
 4. **Hand over the manual steps** above. They need a browser or a password, so the user does them. Check: the user has the list.
 
 # Update
@@ -90,15 +93,16 @@ The `profile` command updates this repository and installs the tools of the mach
 profile update                   # pull the current branch, update the submodules, remove the ones the repo no longer lists
 profile install                  # install the Homebrew packages of essentials
 profile install dev              # install the packages of dev and essentials, then the mise runtimes
+profile install workstation      # install the packages of workstation, dev and essentials, then the mise runtimes
 profile cleanup                  # list what no profile needs, ask, then remove it
 ```
 
 `profile update` removes a submodule that the repo no longer lists: its working tree, its directory under `.git/modules/`, and its section in `.git/config`. It asks no question. It keeps the submodule and prints a warning if the submodule has uncommitted changes, untracked files, a stash, or commits that no remote-tracking ref contains.
 
-`profile install` stores no selection: each run applies only the profiles that you name. `dev` always includes `essentials`. It never removes packages.
+`profile install` stores no selection: each run applies only the profiles that you name. A profile always includes the profiles before it in the chain, and `mise install` runs for `dev` and `workstation`. It never removes packages.
 
 `profile cleanup` has a Homebrew section and a mise section. Each section lists what it would remove, asks its own `[y/N]` question, and removes that list only if you answer `y`. You can remove one list and keep the other.
-- The Homebrew section lists the packages that no profile lists and asks, for example, `Remove these 6 Homebrew packages? [y/N]`. It always compares against every profile, so it never offers to remove the packages of a profile. The list also shows packages that you installed by hand and never added to the Brewfile, so read it before you answer. A plain `brew bundle` command with no `HOMEBREW_PROFILE_INSTALL_PROFILES` also applies every profile.
+- The Homebrew section lists the formulae, casks and taps that no profile lists and asks, for example, `Remove these 6 Homebrew packages? [y/N]`. It always compares against every profile, so it never removes a package of a profile. Before it asks, it checks each candidate against the entries of every profile, also by its old names and aliases, and prints a warning such as `kept docker: a profile lists it` for each candidate that it drops from the list. If it cannot read the names of a candidate, it keeps that candidate too. On `y` it removes the list itself with `brew uninstall` and `brew untap`. It never touches uv tools, VS Code extensions or the other `brew bundle` extension types. The list also shows packages that you installed by hand and never added to the Brewfile, for example Slack or Zoom from Homebrew, so read it before you answer. A plain `brew bundle` command with no `HOMEBREW_PROFILE_INSTALL_PROFILES` also applies every profile.
 - The mise section lists the runtime versions that no config uses, one `tool@version` per line, from `mise ls --prunable --json`. This needs `jq`, which is in `essentials`. Then it asks before it runs `mise prune`. If mise cannot list the versions, for example because of a config error, `profile cleanup` asks nothing and exits with 1.
 
 `profile` exits with 0 on success, 1 when a step failed, and 2 on a usage error. `profile update` does not run `install.sh`. Run `install.sh` again after an update that adds a link.

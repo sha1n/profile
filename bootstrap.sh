@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Usage: curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh | zsh -s -- [essentials|dev]
+# Usage: curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh | zsh -s -- [essentials|dev|workstation]
 
 __BOOTSTRAP_REPO_URL="https://github.com/sha1n/profile.git"
 __BOOTSTRAP_HOMEBREW_INSTALLER_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
