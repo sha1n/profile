@@ -1,0 +1,93 @@
+# Packages for all machine profiles. Add a package to its profile block below.
+# The profiles come from HOMEBREW_PROFILE_INSTALL_PROFILES (set by `profile install`);
+# unset or empty means every profile, because a removing command such as
+# `brew bundle cleanup` must compare against the full list, and `profile install`
+# always sets the variable. The name has the HOMEBREW_ prefix because the
+# brew wrapper passes only HOMEBREW_* variables on to the Brewfile.
+# Selecting dev also selects essentials.
+
+known = %w[essentials dev]
+profiles = ENV.fetch("HOMEBREW_PROFILE_INSTALL_PROFILES", "").split
+profiles = known if profiles.empty?
+unknown = profiles - known
+raise "unknown machine profile: #{unknown.join(", ")}" unless unknown.empty?
+# dev entries need essentials tools, e.g. `uv "poetry"` needs the uv formula
+profiles.unshift("essentials") if profiles.include?("dev") && !profiles.include?("essentials")
+
+# Homebrew 6 refuses untrusted third-party taps (HOMEBREW_REQUIRE_TAP_TRUST default).
+tap "sha1n/tap", trusted: true
+
+if profiles.include?("essentials")
+  # Core utilities
+  brew "coreutils"
+  brew "gnu-time"
+  brew "rsync"
+  brew "watch"
+  brew "wget"
+  brew "tree"
+  brew "bat"
+  brew "sha1n/tap/bert"
+
+  # Search and text processing
+  brew "fzf"
+  brew "jq"
+  brew "ripgrep"
+  brew "yq"
+  brew "poppler"
+
+  # Python CLI tools install as uv tools, not with pipx
+  brew "uv"
+
+  # Editors
+  brew "neovim"
+  brew "vim"
+  cask "sublime-text"
+
+  # Git
+  brew "git"
+  brew "gh"
+  # dotfiles/.gitconfig configures the git-lfs filters
+  brew "git-lfs"
+  brew "git-filter-repo"
+  brew "gnupg"
+
+  cask "warp"
+
+  cask "blackhole-2ch"
+  cask "brave-browser"
+end
+
+if profiles.include?("dev")
+  # Runtime manager: the runtimes come from config/mise/profile.toml, not from Homebrew
+  brew "mise"
+
+  # Tools
+  brew "make"
+  brew "go-task"
+  brew "llvm"
+  brew "shellcheck"
+  brew "glab"
+  brew "sha1n/tap/hako"
+
+  # AI and agents
+  brew "openspec"
+  cask "antigravity-cli"
+  cask "codex"
+  cask "sha1n/tap/acdc-mcp", trusted: true
+
+  # Apps. No `vscode` entries: VS Code Settings Sync owns the extensions.
+  cask "docker-desktop"
+  cask "visual-studio-code"
+  cask "slack"
+  cask "zoom"
+
+  # Go itself comes from mise (config/mise/profile.toml)
+  brew "golangci-lint"
+  brew "goreleaser"
+
+  # Python itself comes from mise (config/mise/profile.toml)
+  brew "ruff"
+  # A uv tool, not the Homebrew formula: the formula pulls in a Homebrew Python next to the mise Python.
+  uv "poetry"
+
+end

@@ -1,31 +1,12 @@
 #!/usr/bin/env zsh
 
-source "$__ZSH_SCRIPTEST_HOME/matchers.sh"
-source "$__ZSH_SCRIPTEST_HOME/test_util.sh"
-fingerprint=$(cat /dev/urandom | base64 | tr -dc '0-9a-zA-Z' | head -c50)
+source "$SHA1N_PROFILE_TESTS_HOME/sandbox.zsh"
 
 install_profile() {
-  if [[ "$(ls -A $HOME)" ]]; then
-    echo "the test $$HOME directory is expected to be a temporary empty directory"
-    exit 1
-  else
-    test_setup_title
-    touch "$HOME/$fingerprint"
-    # install profile in the test sandbox HOME directory
-    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
-    # source load.zsh at top level so exports are visible to all run_test subshells
-    source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
-  fi
-}
-
-cleanup() {
-  test_teardown_title
-  assert_file_exists "$HOME/$fingerprint"
-  if [[ -f "$HOME/$fingerprint" ]]; then
-    echo
-    rm -rf "$HOME"
-    mkdir -p "$HOME"
-  fi
+  # install profile in the test sandbox HOME directory
+  source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
+  # source load.zsh at top level so exports are visible to all run_test subshells
+  source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
 }
 
 function test_source() {
@@ -74,7 +55,7 @@ function test_agents_global_idempotent() {
   test_case_title
 
   # re-running against an already-correct link is a silent no-op (no prompt, no error)
-  install_agents_global >/dev/null 2>&1
+  __profile_install_agents_global >/dev/null 2>&1
   assert_equal "$?" "0"
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
@@ -88,7 +69,7 @@ function test_agents_global_keep_existing() {
   print "KEEP MY OWN RULES" >"$HOME/.claude/CLAUDE.md"
   print "KEEP CODEX RULES" >"$HOME/.codex/AGENTS.md"
 
-  print "n\nn\n" | install_agents_global >/dev/null 2>&1
+  print "n\nn\n" | __profile_install_agents_global >/dev/null 2>&1
 
   assert_empty "$(readlink "$HOME/.claude/CLAUDE.md" 2>/dev/null)"
   assert_contains "$(cat "$HOME/.claude/CLAUDE.md")" "KEEP MY OWN RULES"
@@ -104,7 +85,7 @@ function test_agents_global_replace_existing() {
   print "OLD CONTENT" >"$HOME/.claude/CLAUDE.md"
   print "OLD CONTENT" >"$HOME/.codex/AGENTS.md"
 
-  print "Y\nY\n" | install_agents_global >/dev/null 2>&1
+  print "Y\nY\n" | __profile_install_agents_global >/dev/null 2>&1
 
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
@@ -118,12 +99,13 @@ function test_agents_global_default_replaces() {
   print "OLD CONTENT" >"$HOME/.claude/CLAUDE.md"
   print "OLD CONTENT" >"$HOME/.codex/AGENTS.md"
 
-  print "\n\n" | install_agents_global >/dev/null 2>&1
+  print "\n\n" | __profile_install_agents_global >/dev/null 2>&1
 
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
+setup
 install_profile
 run_test test_source
 run_test test_locale_set
@@ -135,5 +117,5 @@ run_test test_agents_global_idempotent
 run_test test_agents_global_keep_existing
 run_test test_agents_global_replace_existing
 run_test test_agents_global_default_replaces
-finish_tests
 cleanup
+finish_tests

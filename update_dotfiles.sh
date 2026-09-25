@@ -14,9 +14,9 @@ function link_dotfile() {
 
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
-  for file in $(find "$dotfiles_dir" -type f | awk -F/ '{print $NF}'); do
+  for file in "$dotfiles_dir"/**/*(.DN:t); do
     if [[ "$file" != ".gitconfig" && "$file" != "init.lua" ]]; then
-      link_dotfile "$file" && __profile_log_success "ok!" || error "failed!"
+      link_dotfile "$file" && __profile_log_success "ok!" || __profile_log_error "failed to link '$file'!"
     fi
   done
 }

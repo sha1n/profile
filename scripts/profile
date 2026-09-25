@@ -1,0 +1,243 @@
+#!/usr/bin/env zsh
+
+# profile - Update the profile repo, or install or clean up the tools of machine profiles
+#
+# Usage: profile update
+#        profile install [essentials] [dev]
+#        profile cleanup
+#   update      Pull the current branch of the repo and update its submodules
+#   install     Install the Homebrew packages of the given profiles (default: essentials),
+#               and the mise runtimes when dev is given
+#   cleanup     List the Homebrew packages and mise runtimes that no profile lists,
+#               and remove them after a confirmation
+#   -h, --help  Show this help and exit
+#
+# Exit codes: 0 success, 1 a step failed, 2 usage error.
+
+# Resolved here, because inside a function $0 is the function name.
+__profile_repo="${0:A:h:h}"
+
+source "$__profile_repo/scripts/lib.zsh" || exit 1
+
+function __profile_cmd_usage() {
+  print -r -- "usage: profile update
+       profile install [essentials] [dev]
+       profile cleanup
+
+  update      pull the current branch of the repo and update its submodules
+  install     install the Homebrew packages of the given profiles (default: essentials),
+              and the mise runtimes when dev is given
+  cleanup     list the Homebrew packages and mise runtimes that no profile lists,
+              and remove them after a confirmation
+  -h, --help  show this help and exit"
+}
+
+function __profile_cmd_update() {
+  emulate -L zsh
+  local repo="$__profile_repo"
+
+  if (( $# )); then
+    __profile_cmd_usage >&2
+    return 2
+  fi
+
+  __profile_log_section "Repository"
+  git -C "$repo" pull origin "$(git -C "$repo" branch --show-current)" ||
+    { __profile_log_error "git pull failed" >&2; return 1; }
+
+  __profile_log_section "Submodules"
+  git -C "$repo" submodule update --init --recursive ||
+    { __profile_log_error "git submodule update failed" >&2; return 1; }
+}
+
+# Sets reply to the known profiles of the Brewfile.
+function __profile_cmd_known_profiles() {
+  emulate -L zsh
+  local brewfile="$__profile_repo/brew/Brewfile"
+  local line
+  reply=()
+
+  # The Brewfile is the only list of profiles, so a second copy here could drift from it.
+  local known_pattern='^known = %w\[([a-z. ]+)\]$'
+  if [[ -r "$brewfile" ]]; then
+    for line in "${(@f)$(<"$brewfile")}"; do
+      if [[ "$line" =~ $known_pattern ]]; then
+        reply=(${=match[1]})
+        break
+      fi
+    done
+  fi
+  if (( ! ${#reply} )); then
+    __profile_log_error "no 'known' profile list in $brewfile" >&2
+    return 1
+  fi
+}
+
+function __profile_cmd_install() {
+  emulate -L zsh
+  local repo="$__profile_repo"
+  local -a known_profiles=() profiles=() reply=()
+  local name
+
+  __profile_cmd_known_profiles || return 1
+  known_profiles=("${reply[@]}")
+
+  for name in "$@"; do
+    if [[ "$name" == -* ]]; then
+      __profile_cmd_usage >&2
+      return 2
+    fi
+    if (( ! ${known_profiles[(Ie)$name]} )); then
+      __profile_log_error "unknown machine profile: '$name'" >&2
+      return 2
+    fi
+    profiles+=("$name")
+  done
+  (( ${#profiles} )) || profiles=(essentials)
+
+  __profile_log_section "Homebrew packages"
+  if (( $+commands[brew] )); then
+    HOMEBREW_PROFILE_INSTALL_PROFILES="${(j: :)profiles}" \
+      brew bundle --no-upgrade --file "$repo/brew/Brewfile" </dev/null ||
+      { __profile_log_error "brew bundle failed" >&2; return 1; }
+  else
+    __profile_log_warn "brew is not on PATH. Skipping brew bundle..." >&2
+  fi
+
+  (( ${profiles[(Ie)dev]} )) || return 0
+
+  # brew bundle may have just installed mise, and the command hash table predates it.
+  rehash
+  __profile_log_section "mise runtimes"
+  if (( $+commands[mise] )); then
+    # Project config in the caller's directory (mise.toml, .tool-versions, and the idiomatic
+    # files enabled by config/mise/profile.toml) would otherwise replace the machine-profile runtimes.
+    (cd / && mise install </dev/null) || { __profile_log_error "mise install failed" >&2; return 1; }
+  else
+    __profile_log_warn "mise is not on PATH. Skipping mise install..." >&2
+  fi
+}
+
+# Prints <question> and succeeds when the next input line is y or Y.
+function __profile_cmd_confirm() {
+  emulate -L zsh
+  local answer=""
+  print -n -- "$1 [y/N] "
+  # At end of input no answer line was echoed, so the prompt line is still open.
+  read -r answer || print
+  [[ "$answer" == [yY] ]]
+}
+
+function __profile_cmd_cleanup_brew() {
+  emulate -L zsh
+  local profiles="$1" brewfile="$__profile_repo/brew/Brewfile"
+  local output="" line
+  local -a list=() names=()
+  local -i code printing=0
+
+  # Homebrew 6 asks before it removes; with stdin from /dev/null it cannot ask,
+  # so this run only lists and exits with 1.
+  output="$(cd / && HOMEBREW_PROFILE_INSTALL_PROFILES="$profiles" \
+    brew bundle cleanup --file "$brewfile" </dev/null)"
+  code=$?
+  if (( code > 1 )); then
+    __profile_log_error "the package list failed with exit code $code" >&2
+    return 1
+  fi
+  for line in "${(@f)output}"; do
+    [[ "$line" == "Would "* ]] && printing=1
+    (( printing )) || continue
+    [[ "$line" == *--force* || "$line" == *proceed* ]] && continue
+    list+=("$line")
+    [[ "$line" == "Would "* ]] || names+=(${=line})
+  done
+
+  # A list-only run that exits with 1 always prints a `Would ` line, so its absence means Homebrew failed.
+  if (( code == 1 && ! printing )); then
+    __profile_log_error "Homebrew failed with no package list (exit code $code)" >&2
+    return 1
+  fi
+  if (( ! ${#names} )); then
+    __profile_log_info "nothing to remove"
+    return 0
+  fi
+  print -rl -- "${list[@]}"
+  if ! __profile_cmd_confirm "Remove these ${#names} Homebrew packages?"; then
+    __profile_log_info "nothing removed"
+    return 0
+  fi
+  (cd / && HOMEBREW_PROFILE_INSTALL_PROFILES="$profiles" \
+    brew bundle cleanup --force --file "$brewfile" </dev/null) ||
+    { __profile_log_error "the package removal failed" >&2; return 1; }
+}
+
+function __profile_cmd_cleanup_mise() {
+  emulate -L zsh
+  local json="" list=""
+
+  # mise writes the `prune --dry-run` list to stderr, and `--dry-run-code` exits with 1
+  # both when versions are prunable and on a config error, so only this JSON is reliable.
+  json="$(cd / && mise ls --prunable --json </dev/null)" ||
+    { __profile_log_error "the runtime list failed with exit code $?" >&2; return 1; }
+  if (( ! $+commands[jq] )); then
+    __profile_log_error "jq is not on PATH, so the runtime list cannot be read" >&2
+    return 1
+  fi
+  list="$(print -r -- "$json" |
+    jq -r 'to_entries[] | .key as $tool | .value[] | "\($tool)@\(.version)"')" ||
+    { __profile_log_error "the runtime list could not be read" >&2; return 1; }
+
+  local -a versions=("${(@f)list}")
+  versions=("${(@)versions:#}")
+  if (( ! ${#versions} )); then
+    __profile_log_info "no unused runtime versions"
+    return 0
+  fi
+  print -rl -- "${versions[@]}"
+  if ! __profile_cmd_confirm "Remove these ${#versions} runtime versions?"; then
+    __profile_log_info "nothing removed"
+    return 0
+  fi
+  (cd / && mise prune --tools --yes </dev/null) ||
+    { __profile_log_error "the runtime removal failed" >&2; return 1; }
+}
+
+function __profile_cmd_cleanup() {
+  emulate -L zsh
+  local -a reply=()
+
+  if (( $# )); then
+    __profile_cmd_usage >&2
+    return 2
+  fi
+
+  __profile_cmd_known_profiles || return 1
+
+  __profile_log_section "Homebrew cleanup"
+  if (( $+commands[brew] )); then
+    # A subset would make the packages of the other profiles look unlisted.
+    __profile_cmd_cleanup_brew "${(j: :)reply}" || return 1
+  else
+    __profile_log_warn "brew is not on PATH. Skipping brew bundle cleanup..." >&2
+  fi
+
+  __profile_log_section "mise prune"
+  if (( $+commands[mise] )); then
+    __profile_cmd_cleanup_mise || return 1
+  else
+    __profile_log_warn "mise is not on PATH. Skipping mise prune..." >&2
+  fi
+}
+
+function __profile_cmd_main() {
+  case "$1" in
+    ""|help|-h|--help) __profile_cmd_usage; exit 0 ;;
+    update) shift; __profile_cmd_update "$@"; exit $? ;;
+    install) shift; __profile_cmd_install "$@"; exit $? ;;
+    cleanup) shift; __profile_cmd_cleanup "$@"; exit $? ;;
+    *) __profile_cmd_usage >&2; exit 2 ;;
+  esac
+}
+
+# A profile update can rewrite this file while it runs, so the run starts only after zsh has parsed all of it.
+__profile_cmd_main "$@"

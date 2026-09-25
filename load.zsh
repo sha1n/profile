@@ -27,6 +27,7 @@ fi
 source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
 
 source $SHA1N_PROFILE_HOME/include/exports
+source $SHA1N_PROFILE_HOME/include/mise
 source $SHA1N_PROFILE_HOME/include/aliases
 source $SHA1N_PROFILE_HOME/include/functions
 source $SHA1N_PROFILE_HOME/include/keybindings

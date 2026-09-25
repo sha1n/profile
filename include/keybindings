@@ -9,3 +9,12 @@ bindkey  "^[[F"   end-of-line
 bindkey  "^[[3~"  delete-char
 # completion
 bindkey '^I' complete-word
+
+# fzf binds ^I too, so it must run before fzf-tab, which has to be the last to bind ^I.
+# The status check exists because fzf releases older than 0.48 lack --zsh.
+if (( $+commands[fzf] )); then
+  () {
+    local fzf_init
+    fzf_init="$(fzf --zsh 2>/dev/null)" && eval "$fzf_init"
+  }
+fi
