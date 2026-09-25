@@ -35,3 +35,21 @@ cleanup() {
 reset_home() {
   find "$HOME" -mindepth 1 -maxdepth 1 ! -name "$fingerprint" -exec rm -rf {} +
 }
+
+# Prints the names of the `known` line of <brewfile> on one line, in file order.
+# The Brewfile is the only list of profiles, so tests read it instead of holding a
+# copy that could drift. Same pattern as __profile_cmd_known_profiles in scripts/profile.
+known_profiles_of() {
+  local brewfile="$1" line
+  local known_pattern='^known = %w\[([a-z. ]+)\]$'
+  if [[ -r "$brewfile" ]]; then
+    for line in "${(@f)$(<"$brewfile")}"; do
+      if [[ "$line" =~ $known_pattern ]]; then
+        print -r -- "${(j: :)${=match[1]}}"
+        return 0
+      fi
+    done
+  fi
+  print -r -- "no 'known' profile list in $brewfile" >&2
+  return 1
+}

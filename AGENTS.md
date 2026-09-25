@@ -30,9 +30,9 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
   - `lib.zsh` — Shared library (logging, tree search) sourced by functions and install script
 - **`dotfiles/`** — Symlinked to `$HOME` during install (not copied — changes are live). The repo has no `.gitignore` of its own — ignore rules go in `dotfiles/.gitignore_global`
 - **`agents/`** — Global Agent instructions (`AGENTS.md`). `install.sh` symlinks agent configuration files (e.g. `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) to this file. If a target already exists, the script prompts `[n/Y]` before replacing it (default Yes, also at end of input); an existing correct link is left untouched
-- **`brew/Brewfile`** — The only Brewfile: every Homebrew package of the two machine profiles (`essentials`, `dev`), one line each, each inside its `if profiles.include?("<name>")` block. The profiles come from `HOMEBREW_PROFILE_INSTALL_PROFILES` (unset or empty means every profile, so that a plain `brew bundle cleanup` never treats a profile's packages as unlisted; `profile install` always sets it; applying `dev` also applies `essentials`); the `HOMEBREW_` prefix is required because the `brew` wrapper passes no other variables to the Brewfile. Keep the file to Ruby logic that Homebrew documents for Brewfiles (no processes, no loading of other files). No language runtimes here — mise owns them
+- **`brew/Brewfile`** — The only Brewfile: every Homebrew package of the three machine profiles (`essentials`, `dev`, `workstation`), one line each, each inside its `if profiles.include?("<name>")` block. The profiles come from `HOMEBREW_PROFILE_INSTALL_PROFILES` (unset or empty means every profile, so that a plain `brew bundle cleanup` never treats a profile's packages as unlisted; `profile install` always sets it; the profiles form one chain in the order of `known`, so applying `dev` also applies `essentials`, and applying `workstation` also applies `dev` and `essentials`); the `HOMEBREW_` prefix is required because the `brew` wrapper passes no other variables to the Brewfile. Keep the file to Ruby logic that Homebrew documents for Brewfiles (no processes, no loading of other files). No language runtimes here — mise owns them
 - **`config/`** — Config files with nested targets (`install.sh` links dotfiles by basename only, so they cannot live in `dotfiles/`). `config/mise/profile.toml` holds the runtime versions and mise settings; `install.sh` links it to `~/.config/mise/conf.d/profile.toml` (not `config.toml`, which `mise use -g` writes to)
-- **`bootstrap.sh`** — One-command new-Mac setup (`curl … | zsh -s -- [essentials|dev]`): Homebrew, clone, `install.sh`, then `scripts/profile install`. At the repo root, not in `scripts/`, so it is not a command on `PATH`. Add no install logic here; it belongs in `scripts/profile` or `install.sh`
+- **`bootstrap.sh`** — One-command new-Mac setup (`curl … | zsh -s -- [essentials|dev|workstation]`): Homebrew, clone, `install.sh`, then `scripts/profile install`. At the repo root, not in `scripts/`, so it is not a command on `PATH`. Add no install logic here; it belongs in `scripts/profile` or `install.sh`
 - **`zsh-plugins/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
 
@@ -42,8 +42,8 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 ./install.sh              # Full setup: submodules, symlinks, dirs, .zshrc, .zprofile (macOS), neovim, mise link, zwc compilation
                           # Runs every step; exits 1 and names the failed steps if any step failed (an existing target is a skip, not a failure)
 profile update            # Pull the current branch, update submodules, remove submodules no longer in .gitmodules (keeps any with local work)
-profile install [essentials|dev]    # brew bundle for the given profile (default: essentials; dev includes essentials), then mise install for dev
-profile cleanup           # List packages no profile lists and unused mise versions, ask [y/N], then remove
+profile install [essentials|dev|workstation]    # brew bundle for the given profile and the ones before it in the chain (default: essentials), then mise install for dev and workstation
+profile cleanup           # List the formulae, casks and taps no profile lists and unused mise versions, ask [y/N], then remove
 make test                 # Run tests (also: ./tests/run_tests.sh)
 make update_submodules    # Update all git submodules
 make compile              # Compile zsh files to .zwc bytecode
@@ -63,6 +63,7 @@ Tests use the `zsh-scriptest` framework (submodule in `tests/`). Test files must
   1. `setup` — exits if `$HOME` is not empty (guard against running outside sandbox), then writes a fingerprint file to `$HOME`
   2. `cleanup` — asserts the fingerprint exists (proves sandbox isolation), then empties `$HOME`
   3. `reset_home` — removes all but the fingerprint, so each case starts clean
+  4. `known_profiles_of <brewfile>` — prints the names of the Brewfile `known` line, so no test keeps its own list of profiles
 - A file that installs before its cases calls `setup` first, then its install (see `tests/sanity.test.sh`).
 - Tests that run `install.sh` in a child shell also source `tests/install_helpers.zsh`: `run_install [<extra_path>]`, `run_install_with_rc`, `errors_naming`, and `write_failing_stub <dir> <command> <pattern>`. To inject a failure, prefer a stub or a regular file where a directory must go: both also work as root, which ignores directory modes.
 - Available matchers from `matchers.sh`: `assert_contains`, `assert_not_empty`, `assert_file_exists`, `assert_dir_exists`, etc.
@@ -99,9 +100,9 @@ When modifying `include/aliases`:
 - Other env vars: `include/exports`
 
 ### Machine Profiles
-- Two profiles: `essentials` and `dev`. `dev` depends on `essentials`: the Brewfile adds `essentials` whenever `dev` is applied. They are arguments only; no file stores a selection.
-- The known list exists in `brew/Brewfile` (`known = %w[...]`) and `scripts/profile` (`known_profiles=(...)`). A test checks that the two are equal. To add a profile, change both and add its Brewfile block.
-- `scripts/profile` is the only sequence that installs or removes tools: `install` runs `brew bundle`, then `mise install` for `dev`; `cleanup` always compares against every profile and asks one question per tool before it removes. Removal must never use a subset of the profiles. Keep all its logic in functions with one call on the last line: `profile update` can rewrite the file while it runs.
+- Three profiles in one chain: `essentials` < `dev` < `workstation`. Applying a profile also applies every profile before it in the chain. They are arguments only; no file stores a selection.
+- The `known` line of `brew/Brewfile` (`known = %w[...]`) is the only list of profiles, and its order is the chain. `scripts/profile` reads it from the Brewfile (`__profile_cmd_known_profiles`); tests read it with `known_profiles_of` from `tests/sandbox.zsh`. To add a profile, change `known`, add its Brewfile block, and update `test_profile_chain` in `tests/brewfile.test.sh`.
+- `scripts/profile` is the only sequence that installs or removes tools: `install` runs `brew bundle`, then `mise install` for `dev` and every profile after it in the chain; `cleanup` always compares against every profile and asks one question per tool before it removes. Its Homebrew section covers formulae, casks and taps only, drops every candidate that a profile lists (by name, full name, old names and aliases from `brew info --json=v2`, and keeps a candidate whose names it cannot read), and removes the rest itself with `brew uninstall` and `brew untap`, never with `brew bundle cleanup --force`. Each `brew uninstall` runs with `HOMEBREW_NO_AUTOREMOVE=1`, because autoremove can drop a profile formula that was installed as a dependency, and the formula one runs with `--force`, so every installed version goes. Removal must never use a subset of the profiles. Keep all its logic in functions with one call on the last line: `profile update` can rewrite the file while it runs.
 - To set up a machine, or to change its profiles, obey the "Set up with an agent" section of `README.md`.
 
 ### Python Policy

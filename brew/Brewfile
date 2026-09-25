@@ -4,15 +4,15 @@
 # `brew bundle cleanup` must compare against the full list, and `profile install`
 # always sets the variable. The name has the HOMEBREW_ prefix because the
 # brew wrapper passes only HOMEBREW_* variables on to the Brewfile.
-# Selecting dev also selects essentials.
+# The order of `known` is the chain: a profile applies every profile before it,
+# so dev applies essentials, and workstation applies dev and essentials.
+# scripts/profile reads the `known` line and applies the same rule.
 
-known = %w[essentials dev]
+known = %w[essentials dev workstation]
 profiles = ENV.fetch("HOMEBREW_PROFILE_INSTALL_PROFILES", "").split
-profiles = known if profiles.empty?
 unknown = profiles - known
 raise "unknown machine profile: #{unknown.join(", ")}" unless unknown.empty?
-# dev entries need essentials tools, e.g. `uv "poetry"` needs the uv formula
-profiles.unshift("essentials") if profiles.include?("dev") && !profiles.include?("essentials")
+profiles = profiles.empty? ? known : known.first(profiles.map { |name| known.index(name) }.max + 1)
 
 # Homebrew 6 refuses untrusted third-party taps (HOMEBREW_REQUIRE_TAP_TRUST default).
 tap "sha1n/tap", trusted: true
@@ -55,6 +55,9 @@ if profiles.include?("essentials")
 
   cask "blackhole-2ch"
   cask "brave-browser"
+
+  # No `vscode` entries: VS Code Settings Sync owns the extensions.
+  cask "visual-studio-code"
 end
 
 if profiles.include?("dev")
@@ -75,12 +78,6 @@ if profiles.include?("dev")
   cask "codex"
   cask "sha1n/tap/acdc-mcp", trusted: true
 
-  # Apps. No `vscode` entries: VS Code Settings Sync owns the extensions.
-  cask "docker-desktop"
-  cask "visual-studio-code"
-  cask "slack"
-  cask "zoom"
-
   # Go itself comes from mise (config/mise/profile.toml)
   brew "golangci-lint"
   brew "goreleaser"
@@ -90,4 +87,8 @@ if profiles.include?("dev")
   # A uv tool, not the Homebrew formula: the formula pulls in a Homebrew Python next to the mise Python.
   uv "poetry"
 
+end
+
+if profiles.include?("workstation")
+  cask "docker-desktop"
 end
