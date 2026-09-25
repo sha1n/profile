@@ -70,6 +70,8 @@ The profiles form one chain: `essentials` < `dev` < `workstation`. Each profile 
 
 mise owns the language runtimes. Their versions are in [config/mise/profile.toml](config/mise/profile.toml), which `install.sh` links to `~/.config/mise/conf.d/profile.toml`. Homebrew installs no runtime. Python CLI tools install as uv tools (`uv "<tool>"` in the Brewfile, or `uv tool install <tool>`), not with `pipx` or a Homebrew formula. The shell exports `PIP_REQUIRE_VIRTUALENV=true`, so `pip install` works only inside a virtualenv.
 
+The shell exports `HOMEBREW_BUNDLE_FILE` with the path of [brew/Brewfile](brew/Brewfile), so `brew bundle`, `brew bundle check` and `brew bundle list` read it from any directory. A plain `brew bundle` applies every profile. To install one profile, run `profile install <profile>`, or set `HOMEBREW_PROFILE_INSTALL_PROFILES` for one command, for example `HOMEBREW_PROFILE_INSTALL_PROFILES=dev brew bundle check`. A `--file` argument wins over the variable.
+
 After the bootstrap, do these steps by hand: `gh auth login`, create an SSH key and add it with `gh ssh-key add`, and turn on VS Code Settings Sync. The bootstrap prints them at the end.
 
 ## Set up with an agent

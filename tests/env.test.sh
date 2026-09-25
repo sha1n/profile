@@ -44,6 +44,18 @@ function test_pip_require_virtualenv() {
   assert_contains "$exported" "export"
 }
 
+function test_homebrew_bundle_file() {
+  test_case_title
+
+  local exported="$(load_and_eval "$system_path" 'print -r -- "${(t)HOMEBREW_BUNDLE_FILE}"')"
+  local value="$(load_and_eval "$system_path" 'print -r -- "$HOMEBREW_BUNDLE_FILE"')"
+  local profiles_type="$(load_and_eval "$system_path" 'print -r -- "${(t)HOMEBREW_PROFILE_INSTALL_PROFILES}"')"
+
+  assert_equal "$value" "$profile_home/brew/Brewfile"
+  assert_contains "$exported" "export"
+  assert_equal "$profiles_type" ""
+}
+
 function test_go_bin_on_path() {
   test_case_title
 
@@ -127,6 +139,7 @@ function test_no_theme_functions() {
 
 setup
 run_test test_pip_require_virtualenv
+run_test test_homebrew_bundle_file
 run_test test_go_bin_on_path
 run_test test_mise_activated
 run_test test_mise_absent_is_silent

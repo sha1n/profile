@@ -13,6 +13,9 @@ export GREP_COLOR='1;35;40'
 PATH="$PATH:$HOME/.local/bin:$SHA1N_PROFILE_HOME/scripts"
 PATH="$PATH:$HOME/go/bin"
 
+# Homebrew: a plain `brew bundle` reads the repo Brewfile from any directory.
+export HOMEBREW_BUNDLE_FILE="$SHA1N_PROFILE_HOME/brew/Brewfile"
+
 # Backup
 export BACKUP_DST_PATH="/Volumes/Backup/latest"
 export BACKUP_SRC_PATH="/Volumes/Content"
