@@ -24,7 +24,6 @@ shell environment.
 - global instructions for coding agents (see: [agents/AGENTS.md](agents/AGENTS.md))
 - zsh plugins (see: [zsh-plugins](zsh-plugins))
 - essential key bindings
-- zsh theme (see: [zsh-theme](zsh-theme))
 - zsh completion configuration
 
 # Installation

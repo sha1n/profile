@@ -23,9 +23,6 @@ else
   source $SHA1N_PROFILE_HOME/zsh-plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 fi
 
-# theme
-source $SHA1N_PROFILE_HOME/zsh-theme/agnoster-zsh-theme/agnoster.zsh-theme
-
 source $SHA1N_PROFILE_HOME/include/exports
 source $SHA1N_PROFILE_HOME/include/mise
 source $SHA1N_PROFILE_HOME/include/aliases
@@ -33,7 +30,6 @@ source $SHA1N_PROFILE_HOME/include/functions
 source $SHA1N_PROFILE_HOME/include/keybindings
 source $SHA1N_PROFILE_HOME/include/completions
 source $SHA1N_PROFILE_HOME/include/history
-source $SHA1N_PROFILE_HOME/include/prompt
 
 # fzf-tab: after compinit (include/completions), before zsh-syntax-highlighting
 if [[ -o interactive ]]; then

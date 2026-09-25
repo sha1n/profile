@@ -13,8 +13,8 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 ### Loading Chain
 1. `~/.zshrc` sources `load.zsh` (added by `install.sh`)
 2. `load.zsh` orchestrates everything:
-   - Locale, zsh options, `path-ethic` plugin, theme (synchronous — needed at startup)
-   - Sources all `include/` files: exports, mise, aliases, functions, keybindings, completions, history, prompt
+   - Locale, zsh options, `path-ethic` plugin (synchronous — needed at startup)
+   - Sources all `include/` files: exports, mise, aliases, functions, keybindings, completions, history
    - **`include/mise` runs synchronously right after `include/exports`** — runtime `PATH` must be correct at the first prompt, so never defer it
    - **fzf shell integration loads at the end of `include/keybindings`**, before `fzf-tab` — `fzf-tab` must be the last plugin to bind `^I`
    - **Deferred plugins** (via `zsh-defer`, interactive sessions only): `zsh-history-substring-search`, `zsh-autosuggestions`, `fzf-tab`, `zsh-syntax-highlighting` — these load after the prompt appears
@@ -33,7 +33,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 - **`brew/Brewfile`** — The only Brewfile: every Homebrew package of the two machine profiles (`essentials`, `dev`), one line each, each inside its `if profiles.include?("<name>")` block. The profiles come from `HOMEBREW_PROFILE_INSTALL_PROFILES` (unset or empty means every profile, so that a plain `brew bundle cleanup` never treats a profile's packages as unlisted; `profile install` always sets it; applying `dev` also applies `essentials`); the `HOMEBREW_` prefix is required because the `brew` wrapper passes no other variables to the Brewfile. Keep the file to Ruby logic that Homebrew documents for Brewfiles (no processes, no loading of other files). No language runtimes here — mise owns them
 - **`config/`** — Config files with nested targets (`install.sh` links dotfiles by basename only, so they cannot live in `dotfiles/`). `config/mise/profile.toml` holds the runtime versions and mise settings; `install.sh` links it to `~/.config/mise/conf.d/profile.toml` (not `config.toml`, which `mise use -g` writes to)
 - **`bootstrap.sh`** — One-command new-Mac setup (`curl … | zsh -s -- [essentials|dev]`): Homebrew, clone, `install.sh`, then `scripts/profile install`. At the repo root, not in `scripts/`, so it is not a command on `PATH`. Add no install logic here; it belongs in `scripts/profile` or `install.sh`
-- **`zsh-plugins/`, `zsh-theme/`** — Git submodules
+- **`zsh-plugins/`** — Git submodules
 - **`tests/`** — Test suite using `zsh-scriptest` submodule
 
 ## Commands
