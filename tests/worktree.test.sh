@@ -1,29 +1,10 @@
 #!/usr/bin/env zsh
 
-source "$__ZSH_SCRIPTEST_HOME/matchers.sh"
-source "$__ZSH_SCRIPTEST_HOME/test_util.sh"
-fingerprint=$(cat /dev/urandom | base64 | tr -dc '0-9a-zA-Z' | head -c50)
+source "$SHA1N_PROFILE_TESTS_HOME/sandbox.zsh"
 
-setup() {
-  if [[ "$(ls -A $HOME)" ]]; then
-    echo "the test \$HOME directory is expected to be a temporary empty directory"
-    exit 1
-  else
-    test_setup_title
-    touch "$HOME/$fingerprint"
-    source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
-    source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
-  fi
-}
-
-cleanup() {
-  test_teardown_title
-  assert_file_exists "$HOME/$fingerprint"
-  if [[ -f "$HOME/$fingerprint" ]]; then
-    echo
-    rm -rf "$HOME"
-    mkdir -p "$HOME"
-  fi
+install_profile() {
+  source "$SHA1N_PROFILE_TESTS_HOME/../install.sh"
+  source "$SHA1N_PROFILE_TESTS_HOME/../load.zsh"
 }
 
 create_test_repo() {
@@ -209,6 +190,7 @@ function test_wt_rm_decline() {
 }
 
 setup
+install_profile
 run_test test_wt_no_args
 run_test test_wt_new_branch
 run_test test_wt_existing_branch
@@ -221,5 +203,5 @@ run_test test_wt_rm_removes_worktree
 run_test test_wt_rm_removes_branch
 run_test test_wt_rm_from_inside_worktree
 run_test test_wt_rm_decline
-finish_tests
 cleanup
+finish_tests
