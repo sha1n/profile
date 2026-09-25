@@ -5,7 +5,8 @@
 # Usage: profile update
 #        profile install [essentials] [dev]
 #        profile cleanup
-#   update      Pull the current branch of the repo and update its submodules
+#   update      Pull the current branch of the repo, update its submodules, and remove
+#               the submodules that the repo no longer lists
 #   install     Install the Homebrew packages of the given profiles (default: essentials),
 #               and the mise runtimes when dev is given
 #   cleanup     List the Homebrew packages and mise runtimes that no profile lists,
@@ -24,7 +25,8 @@ function __profile_cmd_usage() {
        profile install [essentials] [dev]
        profile cleanup
 
-  update      pull the current branch of the repo and update its submodules
+  update      pull the current branch of the repo, update its submodules, and remove
+              the submodules that the repo no longer lists
   install     install the Homebrew packages of the given profiles (default: essentials),
               and the mise runtimes when dev is given
   cleanup     list the Homebrew packages and mise runtimes that no profile lists,
@@ -48,6 +50,222 @@ function __profile_cmd_update() {
   __profile_log_section "Submodules"
   git -C "$repo" submodule update --init --recursive ||
     { __profile_log_error "git submodule update failed" >&2; return 1; }
+
+  __profile_log_section "Orphaned submodules"
+  __profile_cmd_remove_orphans "$repo"
+}
+
+# Sets reply to the submodule names that <repo>/.gitmodules lists.
+function __profile_cmd_listed_submodules() {
+  emulate -L zsh
+  local repo="$1" output="" key
+  local -i code
+  reply=()
+
+  [[ -f "$repo/.gitmodules" ]] || return 0
+  # git parses .gitmodules with its own quoting and comment rules, which a parser here could miss.
+  output="$(git -C "$repo" config -f .gitmodules --name-only --get-regexp '^submodule\..+\.path$')"
+  code=$?
+  # Exit code 1 means no match.
+  if (( code > 1 )); then
+    __profile_log_error "could not read $repo/.gitmodules (exit code $code)" >&2
+    return 1
+  fi
+  for key in "${(@f)output}"; do
+    [[ -n "$key" ]] && reply+=("${${key#submodule.}%.path}")
+  done
+}
+
+# Sets reply to the submodule names that have a section in the repo config.
+function __profile_cmd_submodule_sections() {
+  emulate -L zsh
+  local repo="$1" output="" key
+  local -i code
+  reply=()
+
+  # Two dots at least, so that settings like submodule.recurse are not taken for sections.
+  output="$(git -C "$repo" config --local --name-only --get-regexp '^submodule\..+\.[^.]+$')"
+  code=$?
+  if (( code > 1 )); then
+    __profile_log_error "could not read the submodule sections of $repo/.git/config (exit code $code)" >&2
+    return 1
+  fi
+  for key in "${(@f)output}"; do
+    [[ -n "$key" ]] && reply+=("${${key#submodule.}%.*}")
+  done
+  reply=("${(@u)reply}")
+}
+
+# Sets reply to the names of the submodule git dirs of <repo>, and REPLY to its absolute
+# modules directory (empty when git reports no common dir).
+function __profile_cmd_submodule_gitdirs() {
+  emulate -L zsh
+  setopt local_options null_glob
+  local repo="$1" common="" dir
+  local -a queue=()
+  reply=()
+  REPLY=""
+
+  # The common dir, not <repo>/.git, so that a linked worktree finds the shared modules.
+  common="$(git -C "$repo" rev-parse --git-common-dir)" ||
+    { __profile_log_error "could not find the git directory of $repo" >&2; return 1; }
+  if [[ -n "$common" ]]; then
+    [[ "$common" == /* ]] || common="$repo/$common"
+    REPLY="${common:A}/modules"
+    queue=("$REPLY"/*(/))
+    while (( ${#queue} )); do
+      dir="${queue[1]}"
+      shift queue
+      # A git dir is not descended into, so nested submodules stay out of scope.
+      if [[ -f "$dir/HEAD" ]]; then
+        reply+=("${dir#$REPLY/}")
+      else
+        queue+=("$dir"/*(/))
+      fi
+    done
+  fi
+}
+
+# Prints the absolute working tree path of the submodule git dir <gitdir> with name <name>.
+function __profile_cmd_submodule_worktree() {
+  emulate -L zsh
+  local repo="$1" name="$2" gitdir="$3" worktree=""
+
+  if [[ -d "$gitdir" ]]; then
+    # git changes into core.worktree before any command and fails when it is gone, so
+    # --work-tree points it at the git dir, which exists.
+    worktree="$(git --git-dir="$gitdir" --work-tree="$gitdir" config --local core.worktree 2>/dev/null)"
+  fi
+  if [[ -z "$worktree" ]]; then
+    worktree="$repo/$name"
+  elif [[ "$worktree" != /* ]]; then
+    worktree="$gitdir/$worktree"
+  fi
+  print -r -- "${worktree:A}"
+}
+
+# Succeeds when <worktree>/.git is a gitdir file that resolves to the existing <gitdir>.
+function __profile_cmd_worktree_points_to() {
+  emulate -L zsh
+  local worktree="$1" gitdir="$2" line="" target=""
+
+  [[ -d "$gitdir" && -f "$worktree/.git" ]] || return 1
+  IFS= read -r line <"$worktree/.git" || [[ -n "$line" ]] || return 1
+  [[ "$line" == "gitdir: "* ]] || return 1
+  target="${line#gitdir: }"
+  [[ "$target" == /* ]] || target="$worktree/$target"
+  [[ "${target:A}" == "${gitdir:A}" ]]
+}
+
+# Sets REPLY to the reason to keep the orphan, or to an empty string when it may be removed.
+function __profile_cmd_orphan_keep_reason() {
+  emulate -L zsh
+  local gitdir="$1" worktree="$2" output=""
+  local -a refs=(--branches)
+  REPLY=""
+
+  [[ -d "$gitdir" ]] || return 0
+
+  if [[ -n "$worktree" ]]; then
+    output="$(git -C "$worktree" status --porcelain)" ||
+      { REPLY="the safety check failed"; return 0; }
+    [[ -n "$output" ]] && { REPLY="uncommitted changes or untracked files"; return 0; }
+  fi
+
+  # These checks read only refs, and --work-tree keeps git from changing into a deleted core.worktree.
+  local -a git_refs=(git --git-dir="$gitdir" --work-tree="$gitdir")
+  local -i code
+  # rev-parse --verify --quiet exits with 1 for a missing ref, and with more on an error.
+  "${git_refs[@]}" rev-parse --verify --quiet refs/stash >/dev/null
+  code=$?
+  (( code == 0 )) && { REPLY="a stash"; return 0; }
+  (( code > 1 )) && { REPLY="the safety check failed"; return 0; }
+
+  "${git_refs[@]}" rev-parse --verify --quiet HEAD >/dev/null
+  code=$?
+  (( code > 1 )) && { REPLY="the safety check failed"; return 0; }
+  (( code == 0 )) && refs=(HEAD --branches)
+  # No fetch: a stale remote-tracking ref can only make this check keep too much.
+  output="$("${git_refs[@]}" rev-list --max-count=1 "${refs[@]}" --not --remotes)" ||
+    { REPLY="the safety check failed"; return 0; }
+  [[ -n "$output" ]] && REPLY="unpushed commits"
+  return 0
+}
+
+# Removes the empty parent directories of <path>, up to but not including <stop>.
+function __profile_cmd_remove_empty_parents() {
+  emulate -L zsh
+  local dir="${1:h}" stop="$2"
+
+  while [[ "$dir" == "$stop"/* ]]; do
+    rmdir "$dir" 2>/dev/null || break
+    dir="${dir:h}"
+  done
+}
+
+# Removes the orphan <name>: its working tree when it points back, its git dir and its config section.
+function __profile_cmd_remove_orphan() {
+  emulate -L zsh
+  local repo="$1" name="$2" modules="$3"
+  local -i has_section="$4"
+  local gitdir="" worktree="" live_worktree=""
+
+  [[ -n "$modules" ]] && gitdir="$modules/$name"
+  worktree="$(__profile_cmd_submodule_worktree "$repo" "$name" "$gitdir")"
+  if [[ -n "$gitdir" && "${gitdir:A}" != "$modules"/* ]] ||
+     [[ "$worktree" == "$repo" || "$worktree" != "$repo"/* ]]; then
+    __profile_log_warn "kept orphaned submodule '$name': a path outside the repo" >&2
+    return 0
+  fi
+  # Other content can occupy the path, for example files that the repo now tracks there.
+  __profile_cmd_worktree_points_to "$worktree" "$gitdir" && live_worktree="$worktree"
+
+  local REPLY=""
+  __profile_cmd_orphan_keep_reason "$gitdir" "$live_worktree"
+  if [[ -n "$REPLY" ]]; then
+    __profile_log_warn "kept orphaned submodule '$name': $REPLY" >&2
+    return 0
+  fi
+
+  # The config section goes last, so that after a failure the next update finds the orphan again.
+  if [[ -n "$live_worktree" ]]; then
+    rm -rf "$live_worktree" || return 1
+    __profile_cmd_remove_empty_parents "$live_worktree" "$repo"
+  fi
+  if [[ -n "$gitdir" && -e "$gitdir" ]]; then
+    rm -rf "$gitdir" || return 1
+    __profile_cmd_remove_empty_parents "$gitdir" "$modules"
+  fi
+  if (( has_section )); then
+    git -C "$repo" config --local --remove-section "submodule.$name" || return 1
+  fi
+  __profile_log_success "removed orphaned submodule '$name'"
+}
+
+# Removes the submodules of <repo> that .gitmodules no longer lists, unless they hold local work.
+function __profile_cmd_remove_orphans() {
+  emulate -L zsh
+  local repo="$1" modules="" name REPLY=""
+  local -a reply=() listed=() sections=() candidates=()
+  local -i failed=0
+
+  __profile_cmd_listed_submodules "$repo" || return 1
+  listed=("${reply[@]}")
+  __profile_cmd_submodule_sections "$repo" || return 1
+  sections=("${reply[@]}")
+  __profile_cmd_submodule_gitdirs "$repo" || return 1
+  modules="$REPLY"
+  candidates=("${sections[@]}" "${reply[@]}")
+  candidates=("${(@u)candidates}")
+
+  for name in "${candidates[@]}"; do
+    (( ${listed[(Ie)$name]} )) && continue
+    if ! __profile_cmd_remove_orphan "$repo" "$name" "$modules" "${sections[(Ie)$name]}"; then
+      __profile_log_error "failed to remove orphaned submodule '$name'" >&2
+      failed=1
+    fi
+  done
+  return failed
 }
 
 # Sets reply to the known profiles of the Brewfile.

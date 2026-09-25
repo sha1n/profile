@@ -218,9 +218,12 @@ collect_and_reset() {
   details="$(cat "$stub_dir/details" 2>/dev/null)"
   config_dir_exists=false
   [[ -e "$HOME/.config/profile" ]] && config_dir_exists=true
-  # The branch query is left out: the update step may make it in any way it likes.
+  # The branch query and the read-only git calls of the orphan step are left out: the
+  # update may make them in any way it likes, and the stub answers them with no orphans.
+  setopt local_options extended_glob
   local -a lines=("${(@f)$(cat "$stub_dir/calls" 2>/dev/null)}")
-  calls="$(print -rl -- "${(@)lines:#git -C * branch --show-current}")"
+  lines=("${(@)lines:#git -C * branch --show-current}")
+  calls="$(print -rl -- "${(@)lines:#git( -C [^ ]##| --git-dir=[^ ]##)# (config|rev-parse|status|rev-list)(| *)}")"
   reset_home
 }
 
@@ -287,7 +290,8 @@ function test_update() {
 
   assert_equal "$rc" "0"
   assert_equal "$calls" "$(step_calls_of pull submodule)"
-  assert_equal "$(title_and_step_sequence)" "$(expected_sequence pull submodule)"
+  # The orphan step makes only read-only calls here, so its title stands alone.
+  assert_equal "$(title_and_step_sequence)" "$(expected_sequence pull submodule; print -r -- TITLE)"
 }
 
 function test_failing_step_stops_the_run() {
@@ -306,6 +310,8 @@ function test_failing_step_stops_the_run() {
     print -r -- "row: $failing fails in profile $command"
     assert_equal "$rc" "1"
     assert_equal "$calls" "$(step_calls_of ${=steps})"
+    # The calls above hide the read-only orphan step, so only its title shows that it ran.
+    assert_equal "$(title_and_step_sequence)" "$(expected_sequence ${=steps})"
   done
 }
 
