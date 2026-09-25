@@ -17,6 +17,12 @@ function __profile_log_success() {
   __profile_log_log "green" "SUCCESS" $1
 }
 
+function __profile_log_section() {
+  local title="$1"
+  print
+  print -P "%B%K{blue}%F{white} ${title//\%/%%} %f%k%b"
+}
+
 function __profile_log_log() {
   printf "$fg[$1]%s:$reset_color %s\n" "$2" "$3"
 }
