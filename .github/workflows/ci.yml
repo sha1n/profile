@@ -37,5 +37,16 @@ jobs:
       - name: Update Submodules
         run: make update_submodules
 
+      # Runner images ship group-writable fpath directories. compaudit rejects
+      # them, and compinit aborts with an error when it has no terminal to ask.
+      - name: Secure Completion Directories
+        shell: zsh {0}
+        run: |
+          fpath=("$PWD/zsh-plugins/zsh-completions/src" $fpath)
+          autoload -U compaudit
+          insecure=(${(f)"$(compaudit 2>/dev/null)"})
+          print -l -- $insecure
+          (( ${#insecure} == 0 )) || sudo chmod g-w,o-w -- $insecure
+
       - name: Run Tests
         run: make test
