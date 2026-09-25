@@ -18,6 +18,12 @@ load_and_eval() {
     "$zsh_bin" -f -c 'source "$1"; eval "$2"' _ "$load_script" "$snippet"
 }
 
+eval_load_eval() {
+  local search_path="$1" before="$2" after="$3"
+  env -i HOME="$HOME" PATH="$search_path" TERM=dumb \
+    "$zsh_bin" -f -c 'eval "$2"; source "$1"; eval "$3"' _ "$load_script" "$before" "$after"
+}
+
 load_stderr() {
   local search_path="$1"
   env -i HOME="$HOME" PATH="$search_path" TERM=dumb \
@@ -97,11 +103,35 @@ EOF
   assert_empty "$err"
 }
 
+function test_prompt_not_set() {
+  test_case_title
+
+  local before="PROMPT='sentinel> '; RPROMPT='right-sentinel'"
+  # A theme can assign the prompt from a precmd hook, which a non-interactive
+  # shell never runs, so run the hooks as an interactive shell would first.
+  local run_hooks='local hook; for hook in $precmd_functions; do $hook; done 2>/dev/null'
+  local prompt="$(eval_load_eval "$system_path" "$before" "$run_hooks"'; print -r -- "$PROMPT"')"
+  local rprompt="$(eval_load_eval "$system_path" "$before" "$run_hooks"'; print -r -- "$RPROMPT"')"
+
+  assert_equal "$prompt" "sentinel> "
+  assert_equal "$rprompt" "right-sentinel"
+}
+
+function test_no_theme_functions() {
+  test_case_title
+
+  local kinds="$(load_and_eval "$system_path" 'whence -w prompt_end build_prompt')"
+
+  assert_not_contains "$kinds" ": function"
+}
+
 setup
 run_test test_pip_require_virtualenv
 run_test test_go_bin_on_path
 run_test test_mise_activated
 run_test test_mise_absent_is_silent
 run_test test_fzf_without_zsh_flag_is_silent
+run_test test_prompt_not_set
+run_test test_no_theme_functions
 cleanup
 finish_tests
