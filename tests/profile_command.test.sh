@@ -325,6 +325,8 @@ function test_install_arguments() {
   # <arguments>|<exit code>|<steps>|<HOMEBREW_PROFILE_INSTALL_PROFILES, or the name the error gives>
   for row in '|0|brew|essentials' 'essentials|0|brew|essentials' \
     'essentials dev|0|brew mise|essentials dev' \
+    'workstation|0|brew mise|workstation' \
+    'essentials workstation|0|brew mise|essentials workstation' \
     'bogus|2||bogus' 'essentials bogus|2||bogus' 'base|2||base'; do
     IFS='|' read -r args expected_rc steps word <<<"$row"
     prepare_case
@@ -418,13 +420,15 @@ function test_install_missing_tools() {
 }
 
 # The Brewfile `known` line is the only list of profiles: a name added there is accepted,
-# and a Brewfile without the line, or no Brewfile, stops the run.
+# and a Brewfile without the line, or no Brewfile, stops the run. The order of the line
+# is the chain, so a name after dev applies dev and runs mise, and a name before it does not.
 function test_install_reads_known_list_from_brewfile() {
   test_case_title
 
   local row content args expected_rc steps word
   # <Brewfile content, or - for no file>|<arguments>|<exit code>|<steps>|<profiles value or error word>
-  for row in 'known = %w[essentials dev extra]|extra|0|brew|extra' \
+  for row in 'known = %w[essentials dev extra]|extra|0|brew mise|extra' \
+    'known = %w[pre essentials dev]|pre|0|brew|pre' \
     '# no profile list here||1||Brewfile' '-|essentials|1||Brewfile'; do
     IFS='|' read -r content args expected_rc steps word <<<"$row"
     prepare_case
