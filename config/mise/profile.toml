@@ -1,0 +1,10 @@
+[settings]
+# Read .nvmrc, .node-version and .python-version in existing projects.
+idiomatic_version_file_enable_tools = ["node", "python"]
+
+[tools]
+go = "1.27"
+python = "3.14"
+node = "26"
+java = "25"
+maven = "3"
