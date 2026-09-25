@@ -87,11 +87,13 @@ Agent, do these steps in order. Each step ends only when its check passes.
 The `profile` command updates this repository and installs the tools of the machine profiles. Run it from any directory.
 
 ```bash
-profile update                   # pull the current branch and update the submodules
+profile update                   # pull the current branch, update the submodules, remove the ones the repo no longer lists
 profile install                  # install the Homebrew packages of essentials
 profile install dev              # install the packages of dev and essentials, then the mise runtimes
 profile cleanup                  # list what no profile needs, ask, then remove it
 ```
+
+`profile update` removes a submodule that the repo no longer lists: its working tree, its directory under `.git/modules/`, and its section in `.git/config`. It asks no question. It keeps the submodule and prints a warning if the submodule has uncommitted changes, untracked files, a stash, or commits that no remote-tracking ref contains.
 
 `profile install` stores no selection: each run applies only the profiles that you name. `dev` always includes `essentials`. It never removes packages.
 

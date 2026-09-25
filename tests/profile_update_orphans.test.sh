@@ -195,6 +195,28 @@ function test_orphan_with_only_config_section() {
   assert_not_empty "$(config_section_of "$orphan_name")"
 }
 
+# A name with .. makes both the git dir and the fallback working tree resolve outside
+# the places that the step may delete from.
+function test_orphan_path_outside_repo() {
+  test_case_title
+  build_repos
+  local name="../escape"
+  git_in -C "$clone" config --local "submodule.$name.url" https://example.invalid/x.git
+  # A git dir with no stash and no commits passes every safety check, so only the path guard keeps it.
+  git_in init -q --bare "$clone/.git/escape"
+  mkdir -p "$HOME/escape"
+  touch "$clone/.git/escape/keep" "$HOME/escape/keep"
+  run_update
+
+  assert_equal "$rc" "0"
+  assert_file_exists "$clone/.git/escape/keep"
+  assert_file_exists "$HOME/escape/keep"
+  assert_not_empty "$(config_section_of "$name")"
+  assert_contains "$err" "kept orphaned submodule '$name'"
+  assert_not_contains "$out" "removed orphaned submodule '$name'"
+  assert_kept_submodule_intact
+}
+
 # A pull alone leaves the orphan's .git file beside the new tracked file, so that path
 # would test the untracked-file check again. Deleting the working tree first lets the pull
 # put only the tracked file there, which is the state this case needs.
@@ -250,6 +272,7 @@ run_test test_orphan_with_unpushed_commit
 run_test test_orphan_with_stash
 run_test test_orphan_with_deleted_working_tree
 run_test test_orphan_with_only_config_section
+run_test test_orphan_path_outside_repo
 run_test test_orphan_path_used_by_other_content
 run_test test_orphan_path_shared_with_tracked_file
 run_test test_no_orphans

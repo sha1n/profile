@@ -41,7 +41,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 ```bash
 ./install.sh              # Full setup: submodules, symlinks, dirs, .zshrc, .zprofile (macOS), neovim, mise link, zwc compilation
                           # Runs every step; exits 1 and names the failed steps if any step failed (an existing target is a skip, not a failure)
-profile update            # Pull the current branch and update submodules
+profile update            # Pull the current branch, update submodules, remove submodules no longer in .gitmodules (keeps any with local work)
 profile install [essentials|dev]    # brew bundle for the given profile (default: essentials; dev includes essentials), then mise install for dev
 profile cleanup           # List packages no profile lists and unused mise versions, ask [y/N], then remove
 make test                 # Run tests (also: ./tests/run_tests.sh)
