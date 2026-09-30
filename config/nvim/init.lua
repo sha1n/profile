@@ -1,4 +1,14 @@
 -- Modern Neovim Configuration
+-- Essentials machines keep nvim (the vim alias) but run it stock. No file stores a
+-- profile selection, so the provisioned lazy.nvim install is the signal for the dev
+-- setup; a ProfileSync run sets vim.g.profile_sync before init.lua loads and must
+-- provision even when lazypath is still empty. vim.loop covers nvim before 0.10,
+-- which must reach this return without an error.
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.g.profile_sync and not (vim.uv or vim.loop).fs_stat(lazypath) then
+  return
+end
+
 -- vim.lsp.config and vim.lsp.enable, used below, first shipped in 0.11.
 if vim.fn.has('nvim-0.11') == 0 then
   vim.api.nvim_echo({ { 'This config needs Neovim 0.11 or later', 'ErrorMsg' } }, true, {})
@@ -10,7 +20,6 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Lazy.nvim Bootstrap
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 local lockfile = vim.fn.stdpath("config") .. "/lazy-lock.json"
 -- Read as bytes ('b'), so the write-back after lazy.setup reproduces the committed file exactly.
 local committed_lock = vim.fn.filereadable(lockfile) == 1 and vim.fn.readfile(lockfile, "b") or nil

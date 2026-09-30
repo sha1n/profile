@@ -38,13 +38,8 @@ if profiles.include?("essentials")
   # Python CLI tools install as uv tools, not with pipx
   brew "uv"
 
-  # Editors
+  # Editors. essentials runs nvim stock; the nvim toolchain lives in dev.
   brew "neovim"
-  # nvim-treesitter compiles its parsers with this CLI
-  brew "tree-sitter-cli"
-  # nvim language server and formatter for Lua; config/nvim/init.lua enables each server whose binary is on PATH
-  brew "lua-language-server"
-  brew "stylua"
   brew "vim"
   cask "sublime-text"
 
@@ -91,6 +86,11 @@ if profiles.include?("dev")
   brew "gopls"
   brew "basedpyright"
   brew "typescript"
+  # nvim language server and formatter for Lua; config/nvim/init.lua enables each server whose binary is on PATH
+  brew "lua-language-server"
+  brew "stylua"
+  # nvim-treesitter compiles its parsers with this CLI
+  brew "tree-sitter-cli"
 
   # Go itself comes from mise (config/mise/profile.toml)
   brew "golangci-lint"

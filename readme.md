@@ -95,7 +95,7 @@ The `profile` command updates this repository and installs the tools of the mach
 
 ```bash
 profile update                   # pull the current branch, update the submodules, remove the ones the repo no longer lists
-profile install                  # install the Homebrew packages of essentials, then sync the nvim plugins
+profile install                  # install the Homebrew packages of essentials
 profile install dev              # install the packages of dev and essentials, sync the nvim plugins, then the mise runtimes
 profile install workstation      # install the packages of workstation, dev and essentials, sync the nvim plugins, then the mise runtimes
 profile cleanup                  # list what no profile needs, ask, then remove it
@@ -103,7 +103,7 @@ profile cleanup                  # list what no profile needs, ask, then remove 
 
 `profile update` removes a submodule that the repo no longer lists: its working tree, its directory under `.git/modules/`, and its section in `.git/config`. It asks no question. It keeps the submodule and prints a warning if the submodule has uncommitted changes, untracked files, a stash, or commits that no remote-tracking ref contains.
 
-`profile install` stores no selection: each run applies only the profiles that you name. A profile always includes the profiles before it in the chain. After `brew bundle`, every profile runs `:ProfileSync` in a headless nvim, and `mise install` runs for `dev` and `workstation`. It never removes packages.
+`profile install` stores no selection: each run applies only the profiles that you name. A profile always includes the profiles before it in the chain. After `brew bundle`, `dev` and `workstation` run `:ProfileSync` in a headless nvim and then `mise install`; `essentials` stops after `brew bundle`. It never removes packages.
 
 `profile cleanup` has a Homebrew section and a mise section. Each section lists what it would remove, asks its own `[y/N]` question, and removes that list only if you answer `y`. You can remove one list and keep the other.
 - The Homebrew section lists the formulae, casks and taps that no profile lists and asks, for example, `Remove these 6 Homebrew packages? [y/N]`. It always compares against every profile, so it never removes a package of a profile. Before it asks, it checks each candidate against the entries of every profile, also by its old names and aliases, and prints a warning such as `kept docker: a profile lists it` for each candidate that it drops from the list. If it cannot read the names of a candidate, it keeps that candidate too. On `y` it removes the list itself with `brew uninstall` and `brew untap`. It removes every installed version of a formula, and it turns Homebrew autoremove off, so a dependency that a profile lists stays. A dependency that no profile lists shows up in the next cleanup. It never touches uv tools, VS Code extensions or the other `brew bundle` extension types. The list also shows packages that you installed by hand and never added to the Brewfile, for example Slack or Zoom from Homebrew, so read it before you answer. A plain `brew bundle` command with no `HOMEBREW_PROFILE_INSTALL_PROFILES` also applies every profile.
@@ -116,9 +116,11 @@ Both `profile install` and `profile cleanup` skip their Homebrew section when `b
 ## Neovim
 The nvim config is [config/nvim](config/nvim), which `install.sh` links as a directory to `~/.config/nvim`. The plugin versions are pinned in the committed [config/nvim/lazy-lock.json](config/nvim/lazy-lock.json).
 
-`profile install` runs `:ProfileSync` in a headless nvim. It restores the plugins to the versions of the lockfile, removes the plugins that the config does not list, and installs the treesitter parsers. It exits with non-zero on failure, also when the loaded nvim config does not define `:ProfileSync`, and `profile install` then fails.
+The full setup — plugins, LSP, treesitter, options — is for `dev` and `workstation` machines. `essentials` keeps the `neovim` binary (the `vim` alias maps to it) but runs it stock: the config returns early when lazy.nvim was never provisioned. No file stores a profile selection; the provisioned lazy.nvim install is the signal.
 
-The Brewfile owns the language servers and formatters: `lua-language-server` and `stylua` in `essentials`, and `gopls`, `basedpyright` and `typescript` in `dev`. `typescript` is TypeScript 7, and nvim uses its native LSP (`tsc --lsp`). The config enables each server whose binary is on `PATH`. There is no Mason.
+`profile install dev` (and `workstation`) runs `:ProfileSync` in a headless nvim. It restores the plugins to the versions of the lockfile, removes the plugins that the config does not list, and installs the treesitter parsers. It exits with non-zero on failure, also when the loaded nvim config does not define `:ProfileSync`, and `profile install` then fails.
+
+The Brewfile owns the language servers and formatters, all in `dev`: `gopls`, `basedpyright`, `typescript`, `lua-language-server` and `stylua`, plus `tree-sitter-cli` for the parsers. `typescript` is TypeScript 7, and nvim uses its native LSP (`tsc --lsp`). The config enables each server whose binary is on `PATH`. There is no Mason.
 
 To update the plugins, run `:Lazy update` in nvim, test the result, and commit `config/nvim/lazy-lock.json`.
 
