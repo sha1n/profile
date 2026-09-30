@@ -1,21 +1,25 @@
 [pull]
-	rebase = true
+  rebase = true
 
 [user]
-	name = sha1n
-	email = sha1n@users.noreply.github.com
+  name = sha1n
+  email = sha1n@users.noreply.github.com
 
 [core]
-	excludesfile = ~/.gitignore_global
-	editor = nvim
+  excludesfile = ~/.gitignore_global
+  editor = nvim
 
 [init]
-	defaultBranch = master
+  defaultBranch = master
+
+[include]
+  path = ~/.gitconfig_local
 
 [includeIf "gitdir:~/code/w/"]
   path = ~/.gitconfig_w
+
 [filter "lfs"]
-	clean = git-lfs clean -- %f
-	smudge = git-lfs smudge -- %f
-	process = git-lfs filter-process
-	required = true
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+  process = git-lfs filter-process
+  required = true
