@@ -1,4 +1,10 @@
 -- Modern Neovim Configuration
+-- vim.lsp.config and vim.lsp.enable, used below, first shipped in 0.11.
+if vim.fn.has('nvim-0.11') == 0 then
+  vim.api.nvim_echo({ { 'This config needs Neovim 0.11 or later', 'ErrorMsg' } }, true, {})
+  return
+end
+
 -- Key Mappings
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
@@ -6,14 +12,17 @@ vim.g.maplocalleader = ' '
 -- Lazy.nvim Bootstrap
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable", -- latest stable release
-    lazypath,
-  })
+  -- Clone at the locked commit: lazy restore does not move lazy.nvim itself, so
+  -- another commit here would be written back into lazy-lock.json.
+  local lock = vim.json.decode(table.concat(vim.fn.readfile(vim.fn.stdpath("config") .. "/lazy-lock.json"), "\n"))
+  local clone = vim.system({ "git", "clone", "--filter=blob:none", "https://github.com/folke/lazy.nvim.git", lazypath }):wait()
+  local checkout = clone.code == 0
+    and vim.system({ "git", "-C", lazypath, "checkout", lock["lazy.nvim"].commit }):wait()
+  if clone.code ~= 0 or checkout.code ~= 0 then
+    vim.fn.delete(lazypath, "rf")
+    vim.api.nvim_echo({ { "Failed to install lazy.nvim:\n" .. (clone.stderr or "") .. (checkout and checkout.stderr or ""), "ErrorMsg" } }, true, {})
+    return
+  end
 end
 vim.opt.rtp:prepend(lazypath)
 
@@ -26,14 +35,10 @@ require("lazy").setup({
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
-  -- LSP Configuration & Plugins
+  -- LSP server definitions. brew/Brewfile installs the servers themselves.
   {
     'neovim/nvim-lspconfig',
     dependencies = {
-      -- Automatically install LSPs to stdpath for neovim
-      { 'williamboman/mason.nvim', config = true },
-      'williamboman/mason-lspconfig.nvim',
-
       -- Useful status updates for LSP
       { 'j-hui/fidget.nvim', opts = {} },
     },
@@ -140,7 +145,8 @@ vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]re
 vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
 
 -- Treesitter Config
-require('nvim-treesitter').install { "c", "cpp", "go", "lua", "python", "rust", "tsx", "typescript", "vimdoc", "vim" }
+-- :ProfileSync installs these; nothing compiles at startup.
+local parsers = { "c", "cpp", "go", "lua", "python", "rust", "tsx", "typescript", "vimdoc", "vim" }
 
 vim.api.nvim_create_autocmd('FileType', {
   callback = function()
@@ -167,32 +173,74 @@ vim.api.nvim_create_autocmd('LspAttach', {
   end,
 })
 
-require('mason').setup()
-
+-- bin is explicit because some lspconfig definitions (ts_ls) set cmd to a function.
 local servers = {
-  -- Add servers here:
-  -- pyright = {},
-  -- tsserver = {},
   lua_ls = {
-    Lua = {
-      workspace = { checkThirdParty = false },
-      telemetry = { enable = false },
+    bin = 'lua-language-server',
+    settings = {
+      Lua = {
+        workspace = { checkThirdParty = false },
+        telemetry = { enable = false },
+      },
     },
   },
+  stylua = { bin = 'stylua' },
+  gopls = { bin = 'gopls' },
+  basedpyright = { bin = 'basedpyright-langserver' },
+  ts_ls = { bin = 'typescript-language-server' },
 }
 
 vim.lsp.config('*', {
   capabilities = require('cmp_nvim_lsp').default_capabilities(),
 })
 
-for server_name, settings in pairs(servers) do
-  vim.lsp.config(server_name, { settings = settings })
+for server_name, server in pairs(servers) do
+  if server.settings then
+    vim.lsp.config(server_name, { settings = server.settings })
+  end
+  -- The essentials profile installs no dev servers, and an enabled server without its binary logs an error on each start.
+  if vim.fn.executable(server.bin) == 1 then
+    vim.lsp.enable(server_name)
+  end
 end
 
--- mason-lspconfig v2 calls vim.lsp.enable() for installed servers (automatic_enable).
-require('mason-lspconfig').setup {
-  ensure_installed = vim.tbl_keys(servers),
-}
+-- Headless provisioning for `profile install`: `nvim --headless +ProfileSync`.
+-- nvim --headless exits with 0 after errors, so the exit status must come from cquit.
+vim.api.nvim_create_user_command('ProfileSync', function()
+  local failures = {}
+
+  require('lazy').restore { wait = true, show = false }
+  require('lazy').clean { wait = true, show = false }
+  for _, plugin in pairs(require('lazy.core.config').plugins) do
+    if not plugin._.installed then
+      table.insert(failures, 'plugin not installed: ' .. plugin.name)
+    end
+    for _, task in ipairs(plugin._.tasks or {}) do
+      if task:has_errors() then
+        table.insert(failures, 'plugin ' .. plugin.name .. ': ' .. task:output(vim.log.levels.ERROR))
+      end
+    end
+  end
+
+  local ok, err = pcall(function()
+    require('nvim-treesitter').install(parsers):wait(600000)
+  end)
+  if not ok then
+    table.insert(failures, 'treesitter install: ' .. tostring(err))
+  end
+  -- Not nvim_get_runtime_file: it caches the search, and the parser directory can be new in this session.
+  local installed = require('nvim-treesitter').get_installed 'parsers'
+  for _, lang in ipairs(parsers) do
+    if not vim.list_contains(installed, lang) then
+      table.insert(failures, 'parser not installed: ' .. lang)
+    end
+  end
+
+  for _, failure in ipairs(failures) do
+    io.stderr:write(failure .. '\n')
+  end
+  vim.cmd(#failures == 0 and 'qall!' or 'cquit 1')
+end, { desc = 'Restore plugins to lazy-lock.json and install the treesitter parsers' })
 
 -- CMP Config
 local cmp = require 'cmp'

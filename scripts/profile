@@ -8,7 +8,8 @@
 #   update      Pull the current branch of the repo, update its submodules, and remove
 #               the submodules that the repo no longer lists
 #   install     Install the Homebrew packages of the given profiles (default: essentials),
-#               and the mise runtimes from dev on. The profiles form a chain: each one
+#               restore the nvim plugins and parsers to config/nvim/lazy-lock.json, and
+#               install the mise runtimes from dev on. The profiles form a chain: each one
 #               includes the ones before it, so workstation includes dev and essentials
 #   cleanup     List the Homebrew packages and mise runtimes that no profile lists,
 #               and remove them after a confirmation
@@ -29,7 +30,8 @@ function __profile_cmd_usage() {
   update      pull the current branch of the repo, update its submodules, and remove
               the submodules that the repo no longer lists
   install     install the Homebrew packages of the given profiles (default: essentials),
-              and the mise runtimes from dev on. The profiles form a chain: each one
+              restore the nvim plugins and parsers to config/nvim/lazy-lock.json, and
+              install the mise runtimes from dev on. The profiles form a chain: each one
               includes the ones before it, so workstation includes dev and essentials
   cleanup     list the Homebrew packages and mise runtimes that no profile lists,
               and remove them after a confirmation
@@ -339,10 +341,17 @@ function __profile_cmd_install() {
     __profile_log_warn "brew is not on PATH. Skipping brew bundle..." >&2
   fi
 
+  # brew bundle may have just installed nvim or mise, and the command hash table predates them.
+  rehash
+  __profile_log_section "Neovim plugins"
+  if (( $+commands[nvim] )); then
+    nvim --headless +ProfileSync </dev/null || { __profile_log_error "nvim plugin sync failed" >&2; return 1; }
+  else
+    __profile_log_warn "nvim is not on PATH. Skipping the nvim plugin sync..." >&2
+  fi
+
   __profile_cmd_chain_reaches dev "${profiles[@]}" || return 0
 
-  # brew bundle may have just installed mise, and the command hash table predates it.
-  rehash
   __profile_log_section "mise runtimes"
   if (( $+commands[mise] )); then
     # Project config in the caller's directory (mise.toml, .tool-versions, and the idiomatic

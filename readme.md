@@ -45,7 +45,9 @@ The installation script runs these steps, each under a section title:
    - If `~/.zshrc` already sources a `load.zsh`, skips it
 6. Links `agents/AGENTS.md` to `~/.agents/AGENTS.md`, `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`.
    - If a target already exists, asks `[n/Y]` before it replaces it. Default is Yes
-7. Links `dotfiles/init.lua` to `~/.config/nvim/init.lua`.
+7. Links the `config/nvim` directory to `~/.config/nvim`.
+   - If `~/.config/nvim` is a directory of the old layout, whose `init.lua` links into this repository, moves it to `~/.config/nvim.bak.<epoch seconds>` first
+   - If anything else is at `~/.config/nvim`, prints a warning and skips it
 8. Links `config/mise/profile.toml` to `~/.config/mise/conf.d/profile.toml`.
 9. Compiles the zsh files to `.zwc` bytecode.
 
@@ -93,15 +95,15 @@ The `profile` command updates this repository and installs the tools of the mach
 
 ```bash
 profile update                   # pull the current branch, update the submodules, remove the ones the repo no longer lists
-profile install                  # install the Homebrew packages of essentials
-profile install dev              # install the packages of dev and essentials, then the mise runtimes
-profile install workstation      # install the packages of workstation, dev and essentials, then the mise runtimes
+profile install                  # install the Homebrew packages of essentials, then sync the nvim plugins
+profile install dev              # install the packages of dev and essentials, sync the nvim plugins, then the mise runtimes
+profile install workstation      # install the packages of workstation, dev and essentials, sync the nvim plugins, then the mise runtimes
 profile cleanup                  # list what no profile needs, ask, then remove it
 ```
 
 `profile update` removes a submodule that the repo no longer lists: its working tree, its directory under `.git/modules/`, and its section in `.git/config`. It asks no question. It keeps the submodule and prints a warning if the submodule has uncommitted changes, untracked files, a stash, or commits that no remote-tracking ref contains.
 
-`profile install` stores no selection: each run applies only the profiles that you name. A profile always includes the profiles before it in the chain, and `mise install` runs for `dev` and `workstation`. It never removes packages.
+`profile install` stores no selection: each run applies only the profiles that you name. A profile always includes the profiles before it in the chain. After `brew bundle`, every profile runs `nvim --headless +ProfileSync`, and `mise install` runs for `dev` and `workstation`. It never removes packages.
 
 `profile cleanup` has a Homebrew section and a mise section. Each section lists what it would remove, asks its own `[y/N]` question, and removes that list only if you answer `y`. You can remove one list and keep the other.
 - The Homebrew section lists the formulae, casks and taps that no profile lists and asks, for example, `Remove these 6 Homebrew packages? [y/N]`. It always compares against every profile, so it never removes a package of a profile. Before it asks, it checks each candidate against the entries of every profile, also by its old names and aliases, and prints a warning such as `kept docker: a profile lists it` for each candidate that it drops from the list. If it cannot read the names of a candidate, it keeps that candidate too. On `y` it removes the list itself with `brew uninstall` and `brew untap`. It removes every installed version of a formula, and it turns Homebrew autoremove off, so a dependency that a profile lists stays. A dependency that no profile lists shows up in the next cleanup. It never touches uv tools, VS Code extensions or the other `brew bundle` extension types. The list also shows packages that you installed by hand and never added to the Brewfile, for example Slack or Zoom from Homebrew, so read it before you answer. A plain `brew bundle` command with no `HOMEBREW_PROFILE_INSTALL_PROFILES` also applies every profile.
@@ -109,7 +111,16 @@ profile cleanup                  # list what no profile needs, ask, then remove 
 
 `profile` exits with 0 on success, 1 when a step failed, and 2 on a usage error. `profile update` does not run `install.sh`. Run `install.sh` again after an update that adds a link.
 
-Both `profile install` and `profile cleanup` skip their Homebrew section when `brew` is not on `PATH`, and their mise section when `mise` is not on `PATH`.
+Both `profile install` and `profile cleanup` skip their Homebrew section when `brew` is not on `PATH`, and their mise section when `mise` is not on `PATH`. `profile install` skips the nvim plugin sync when `nvim` is not on `PATH`.
+
+## Neovim
+The nvim config is [config/nvim](config/nvim), which `install.sh` links as a directory to `~/.config/nvim`. The plugin versions are pinned in the committed [config/nvim/lazy-lock.json](config/nvim/lazy-lock.json).
+
+`profile install` runs `nvim --headless +ProfileSync`. It restores the plugins to the versions of the lockfile, removes the plugins that the config does not list, and installs the treesitter parsers. It exits with non-zero on failure, and `profile install` then fails.
+
+The Brewfile owns the language servers and formatters: `lua-language-server` and `stylua` in `essentials`, and `gopls`, `basedpyright` and `typescript-language-server` in `dev`. The config enables each server whose binary is on `PATH`. There is no Mason.
+
+To update the plugins, run `:Lazy update` in nvim, test the result, and commit `config/nvim/lazy-lock.json`.
 
 # Why not Oh-My-Zsh, Zim or Something else?
 I've been using Oh-My-Zsh happily for many years and I could continue using it forever. I created this repository for several reasons.

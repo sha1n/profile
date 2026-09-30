@@ -42,6 +42,9 @@ if profiles.include?("essentials")
   brew "neovim"
   # nvim-treesitter compiles its parsers with this CLI
   brew "tree-sitter-cli"
+  # nvim language server and formatter for Lua; config/nvim/init.lua enables each server whose binary is on PATH
+  brew "lua-language-server"
+  brew "stylua"
   brew "vim"
   cask "sublime-text"
 
@@ -79,6 +82,13 @@ if profiles.include?("dev")
   cask "antigravity-cli"
   cask "codex"
   cask "sha1n/tap/acdc-mcp", trusted: true
+
+  # Language servers for nvim. basedpyright and typescript-language-server depend on the
+  # Homebrew node formula, which openspec already pulls in; mise still owns the node that
+  # projects use, so add no node entry here.
+  brew "gopls"
+  brew "basedpyright"
+  brew "typescript-language-server"
 
   # Go itself comes from mise (config/mise/profile.toml)
   brew "golangci-lint"

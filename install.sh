@@ -100,19 +100,49 @@ function __profile_install_link_dotfiles() {
   local file failed=0
 
   for file in "$__profile_install_dotfiles_dir"/**/*(.DN:t); do
-    if [[ "$file" == "init.lua" ]]; then
-      continue
-    fi
     __profile_install_link_file "$__profile_install_dotfiles_dir/$file" "$HOME/$file" || failed=1
   done
   return "$failed"
 }
 
+# Links ~/.config/nvim as a whole, so lazy.nvim writes lazy-lock.json into the repo.
 function __profile_install_setup_neovim() {
-  local nvim_config_dir="$HOME/.config/nvim"
+  local src="$SHA1N_PROFILE_HOME/config/nvim"
+  local dst="$HOME/.config/nvim"
 
-  __profile_install_create_directory "$nvim_config_dir" || return 1
-  __profile_install_link_file "$__profile_install_dotfiles_dir/init.lua" "$nvim_config_dir/init.lua"
+  if [[ -L "$dst" && "$(readlink "$dst")" == "$src" ]]; then
+    return 0
+  fi
+
+  if [[ -e "$dst" || -L "$dst" ]]; then
+    __profile_install_is_old_neovim_layout "$dst" || {
+      __profile_log_warn "'$dst' exists and is not linked to the profile. Skipping..."
+      return 0
+    }
+    local backup="$dst.bak.$(date +%s)"
+    __profile_log_info "moving the old nvim config '$dst' to '$backup'..."
+    if ! mv "$dst" "$backup"; then
+      __profile_log_error "failed to move '$dst' to '$backup'!"
+      return 1
+    fi
+  fi
+
+  __profile_install_create_directory "${dst:h}" || return 1
+  __profile_log_info "linking ${dst:t}..."
+  if ! ln -s "$src" "$dst"; then
+    __profile_log_error "failed to link '$dst'!"
+    return 1
+  fi
+}
+
+# Succeeds when <dir> is a real directory whose init.lua links into the repo, as the
+# install that linked dotfiles/init.lua by itself left it.
+function __profile_install_is_old_neovim_layout() {
+  local dir="$1" init_target
+  [[ -d "$dir" && ! -L "$dir" && -L "$dir/init.lua" ]] || return 1
+  init_target="$(readlink "$dir/init.lua")"
+  [[ "$init_target" == "$SHA1N_PROFILE_HOME/dotfiles/init.lua" ||
+    "$init_target" == "$SHA1N_PROFILE_HOME/config/nvim/init.lua" ]]
 }
 
 function __profile_install_link_mise_config() {
