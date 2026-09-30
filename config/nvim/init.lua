@@ -257,7 +257,12 @@ vim.api.nvim_create_user_command('ProfileSync', function()
   end
 
   local ok, err = pcall(function()
-    require('nvim-treesitter').install(parsers):wait(600000)
+    assert(require('nvim-treesitter').install(parsers):wait(600000), 'install failed')
+    -- The :TSUpdate build hook starts an async update that restore does not await, and
+    -- install skips a parser that is present but stale. update selects by revision and
+    -- waits on any in-flight install of the same parser, so this blocks until every
+    -- parser is at the pinned revision.
+    assert(require('nvim-treesitter').update(parsers):wait(600000), 'update failed')
   end)
   if not ok then
     table.insert(failures, 'treesitter install: ' .. tostring(err))
