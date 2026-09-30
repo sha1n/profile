@@ -23,17 +23,27 @@ function link_dotfiles() {
 
 function setup_neovim() {
   __profile_log_info "updating neovim config..."
+  local src="$SHA1N_PROFILE_HOME/config/nvim"
   local nvim_config_dir="$HOME/.config/nvim"
+
+  if [[ -L "$nvim_config_dir" && "$(readlink "$nvim_config_dir")" == "$src" ]]; then
+    return 0
+  fi
 
   if [[ -d "$nvim_config_dir" && ! -L "$nvim_config_dir" ]]; then
     __profile_log_warn "'$nvim_config_dir' is a directory, not a link to the profile. Run install.sh to migrate it. Skipping..."
     return 0
   fi
 
+  # A regular file or a link to a foreign config is user-owned; only install.sh may replace targets.
+  if [[ -e "$nvim_config_dir" || -L "$nvim_config_dir" ]]; then
+    __profile_log_warn "'$nvim_config_dir' exists and is not linked to the profile. Skipping..."
+    return 0
+  fi
+
   mkdir -p "${nvim_config_dir:h}" || { __profile_log_error "failed to create '${nvim_config_dir:h}'!"; return 1; }
   __profile_log_info "linking the nvim config directory..."
-  # Without -n, ln would follow an existing link and create the new one inside the linked directory.
-  ln -sfn "$SHA1N_PROFILE_HOME/config/nvim" "$nvim_config_dir"
+  ln -s "$src" "$nvim_config_dir"
 }
 
 link_dotfiles
