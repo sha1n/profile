@@ -55,8 +55,10 @@ require("lazy").setup({
   -- Highlight, edit, and navigate code
   {
     'nvim-treesitter/nvim-treesitter',
+    branch = 'main',
+    lazy = false,
     dependencies = {
-      'nvim-treesitter/nvim-treesitter-textobjects',
+      { 'nvim-treesitter/nvim-treesitter-textobjects', branch = 'main' },
     },
     build = ":TSUpdate",
   },
@@ -134,12 +136,16 @@ vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]re
 vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
 
 -- Treesitter Config
-require('nvim-treesitter.configs').setup {
-  ensure_installed = { "c", "cpp", "go", "lua", "python", "rust", "tsx", "typescript", "vimdoc", "vim" },
-  auto_install = false,
-  highlight = { enable = true },
-  indent = { enable = true },
-}
+require('nvim-treesitter').install { "c", "cpp", "go", "lua", "python", "rust", "tsx", "typescript", "vimdoc", "vim" }
+
+vim.api.nvim_create_autocmd('FileType', {
+  callback = function()
+    -- Fails for filetypes without an installed parser; those keep regex highlighting.
+    if pcall(vim.treesitter.start) then
+      vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end
+  end,
+})
 
 -- LSP Config
 local on_attach = function(_, bufnr)
