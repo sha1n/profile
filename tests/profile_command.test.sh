@@ -220,7 +220,9 @@ step_call() {
     submodule) print -r -- "git -C $repo submodule update --init --recursive" ;;
     brew) print -r -- "brew bundle --no-upgrade --file $brewfile" ;;
     mise) print -r -- "mise install" ;;
-    nvim) print -r -- "nvim --headless +ProfileSync" ;;
+    # The pcall wrapper quits nvim when :ProfileSync is missing or fails; a bare
+    # +ProfileSync would leave headless nvim waiting for input forever.
+    nvim) print -r -- "nvim --headless +lua local ok, err = pcall(vim.cmd, 'ProfileSync') if not ok then io.stderr:write(tostring(err) .. '\n') vim.cmd('cquit 1') end" ;;
     brew_dry) print -r -- "brew bundle cleanup --formula --cask --tap --file $brewfile" ;;
     brew_rm_cask) print -r -- "brew uninstall --cask orphan-cask" ;;
     brew_rm_formula) print -r -- "brew uninstall --formula --force orphan-formula other-formula" ;;
@@ -479,7 +481,7 @@ function test_install_syncs_nvim_plugins() {
   assert_equal "$rc" "0"
   assert_equal "$calls" "$(step_calls_of brew nvim)"
   assert_equal "$(title_and_step_sequence)" "$(expected_sequence brew nvim)"
-  assert_contains "$(details_of 'nvim *')" "nvim --headless +ProfileSync|"
+  assert_contains "$(details_of 'nvim *')" "$(step_call nvim)|"
   assert_contains "$(details_of 'nvim *')" "|stdin=devnull"
 }
 

@@ -345,7 +345,13 @@ function __profile_cmd_install() {
   rehash
   __profile_log_section "Neovim plugins"
   if (( $+commands[nvim] )); then
-    nvim --headless +ProfileSync </dev/null || { __profile_log_error "nvim plugin sync failed" >&2; return 1; }
+    # A ~/.config/nvim that is not this repo's has no :ProfileSync, and an init.lua that
+    # fails early loses it; a bare +ProfileSync would then leave headless nvim waiting
+    # for input forever, so every failure must reach cquit. pcall, not :try, because an
+    # error in a +cmd line aborts the whole line, catch and cquit included.
+    nvim --headless \
+      "+lua local ok, err = pcall(vim.cmd, 'ProfileSync') if not ok then io.stderr:write(tostring(err) .. '\n') vim.cmd('cquit 1') end" \
+      </dev/null || { __profile_log_error "nvim plugin sync failed" >&2; return 1; }
   else
     __profile_log_warn "nvim is not on PATH. Skipping the nvim plugin sync..." >&2
   fi
