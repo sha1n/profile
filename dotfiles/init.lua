@@ -5,7 +5,7 @@ vim.g.maplocalleader = ' '
 
 -- Lazy.nvim Bootstrap
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
     "git",
     "clone",
@@ -36,10 +36,14 @@ require("lazy").setup({
 
       -- Useful status updates for LSP
       { 'j-hui/fidget.nvim', opts = {} },
-
-      -- Additional lua configuration, makes nvim stuff amazing!
-      'folke/neodev.nvim',
     },
+  },
+
+  -- Neovim Lua API completion and types when editing the config
+  {
+    'folke/lazydev.nvim',
+    ft = 'lua',
+    opts = {},
   },
 
   -- Autocompletion
@@ -148,23 +152,22 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 -- LSP Config
-local on_attach = function(_, bufnr)
-  local nmap = function(keys, func, desc)
-    if desc then
-      desc = 'LSP: ' .. desc
+vim.api.nvim_create_autocmd('LspAttach', {
+  callback = function(args)
+    local bufnr = args.buf
+    local nmap = function(keys, func, desc)
+      vim.keymap.set('n', keys, func, { buffer = bufnr, desc = 'LSP: ' .. desc })
     end
-    vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
-  end
 
-  nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
-  nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
-  nmap('gd', vim.lsp.buf.definition, '[G]oto [D]efinition')
-  nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
-  nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
-end
+    nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
+    nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+    nmap('gd', vim.lsp.buf.definition, '[G]oto [D]efinition')
+    nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+    nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
+  end,
+})
 
 require('mason').setup()
-require('neodev').setup()
 
 local servers = {
   -- Add servers here:
@@ -178,23 +181,17 @@ local servers = {
   },
 }
 
-local capabilities = vim.lsp.protocol.make_client_capabilities()
-capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
+vim.lsp.config('*', {
+  capabilities = require('cmp_nvim_lsp').default_capabilities(),
+})
 
-local mason_lspconfig = require 'mason-lspconfig'
+for server_name, settings in pairs(servers) do
+  vim.lsp.config(server_name, { settings = settings })
+end
 
-mason_lspconfig.setup {
+-- mason-lspconfig v2 calls vim.lsp.enable() for installed servers (automatic_enable).
+require('mason-lspconfig').setup {
   ensure_installed = vim.tbl_keys(servers),
-  handlers = {
-    function(server_name)
-      require('lspconfig')[server_name].setup {
-        capabilities = capabilities,
-        on_attach = on_attach,
-        settings = servers[server_name],
-        filetypes = (servers[server_name] or {}).filetypes,
-      }
-    end,
-  },
 }
 
 -- CMP Config
@@ -239,6 +236,8 @@ cmp.setup {
     end, { 'i', 's' }),
   },
   sources = {
+    -- group_index 0 keeps lazydev ahead of lua_ls for require() path completion.
+    { name = 'lazydev', group_index = 0 },
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
   },
