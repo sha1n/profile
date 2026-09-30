@@ -143,7 +143,7 @@ function test_step_failure_fails_install() {
     'Directories|local-file|.local/bin'
     'Shell rc (~/.zshrc)|zshrc-dir|.zshrc'
     'Agent instructions|claude-file|.claude'
-    'Neovim|nvim-file|.config/nvim'
+    'Neovim|config-file|.config'
     'Homebrew shellenv (~/.zprofile)|zprofile-dir|.zprofile'
   )
   for row in "${rows[@]}"; do
@@ -161,7 +161,8 @@ function test_step_failure_fails_install() {
       local-file) print -n "FILE" >"$HOME/.local" ;;
       zshrc-dir) mkdir "$HOME/.zshrc" ;;
       claude-file) print -n "FILE" >"$HOME/.claude" ;;
-      nvim-file) mkdir -p "$HOME/.config" && print -n "FILE" >"$HOME/.config/nvim" ;;
+      # A file where ~/.config must go: neither the directory nor the link can be made.
+      config-file) print -n "FILE" >"$HOME/.config" ;;
       # Homebrew must be found, or the step is a skip.
       zprofile-dir) mkdir "$HOME/.zprofile" && write_brew_stub "$stub_dir" ;;
     esac
@@ -191,12 +192,119 @@ function test_sourced_failure_returns_1() {
   assert_contains "$output" "after"
 }
 
+nvim_config="$HOME/.config/nvim"
+nvim_repo_config="$profile_home/config/nvim"
+
+# Prints what is at <path>: link:<target>, dir, file or none.
+path_kind() {
+  if [[ -L "$1" ]]; then
+    print -r -- "link:$(readlink "$1")"
+  elif [[ -d "$1" ]]; then
+    print -r -- "dir"
+  elif [[ -e "$1" ]]; then
+    print -r -- "file"
+  else
+    print -r -- "none"
+  fi
+}
+
+# The config directory is linked as a whole. The link may dangle, as the repo of the
+# run under test may predate config/nvim, so the checks read the link, not its target.
+function test_neovim_links_config_directory() {
+  test_case_title
+
+  local row state
+  # <state of ~/.config/nvim before the run>
+  for row in 'no-config-dir' 'absent' 'linked'; do
+    state="$row"
+    print -r -- "row: $state"
+    reset_home
+    case "$state" in
+      absent) mkdir -p "$HOME/.config" ;;
+      linked) mkdir -p "$HOME/.config" && ln -s "$nvim_repo_config" "$nvim_config" ;;
+    esac
+
+    run_install_with_rc
+
+    assert_equal "$install_rc" "0"
+    assert_equal "$(path_kind "$nvim_config")" "link:$nvim_repo_config"
+    assert_empty "$(print -r -- "$HOME"/.config/nvim.bak.*(DN))"
+    assert_equal "$(path_kind "$HOME/init.lua")" "none"
+  done
+}
+
+# A directory from the old layout, whose init.lua links into the repo, is kept as a
+# backup and replaced by the link.
+function test_neovim_migrates_old_layout() {
+  test_case_title
+
+  local target
+  local -a backups
+  for target in "$profile_home/dotfiles/init.lua" "$nvim_repo_config/init.lua"; do
+    print -r -- "row: init.lua -> $target"
+    reset_home
+    mkdir -p "$nvim_config"
+    ln -s "$target" "$nvim_config/init.lua"
+    print -r -- "LOCK" >"$nvim_config/lazy-lock.json"
+
+    run_install_with_rc
+    backups=("$HOME"/.config/nvim.bak.*(DN))
+
+    assert_equal "$install_rc" "0"
+    assert_equal "$(path_kind "$nvim_config")" "link:$nvim_repo_config"
+    assert_equal "${#backups}" "1"
+    assert_match "${backups[1]:t}" '^nvim\.bak\.[0-9]+$'
+    assert_equal "$(path_kind "${backups[1]}")" "dir"
+    assert_equal "$(cat "${backups[1]}/lazy-lock.json" 2>/dev/null)" "LOCK"
+    assert_equal "$(path_kind "${backups[1]}/init.lua")" "link:$target"
+  done
+}
+
+# Anything else at ~/.config/nvim belongs to the user: the step warns and leaves it.
+function test_neovim_skips_foreign_config() {
+  test_case_title
+
+  local row expected
+  # <what is at ~/.config/nvim>
+  for row in 'file' 'dir' 'dir-own-init' 'link-elsewhere'; do
+    print -r -- "row: $row"
+    reset_home
+    mkdir -p "$HOME/.config"
+    case "$row" in
+      file) print -n "MINE" >"$nvim_config" ;;
+      dir) mkdir "$nvim_config" && print -n "MINE" >"$nvim_config/mine.lua" ;;
+      dir-own-init) mkdir "$nvim_config" && print -n "MINE" >"$nvim_config/init.lua" ;;
+      link-elsewhere) mkdir "$HOME/elsewhere" && ln -s "$HOME/elsewhere" "$nvim_config" ;;
+    esac
+    expected="$(path_kind "$nvim_config")"
+
+    run_install_with_rc
+
+    assert_equal "$install_rc" "0"
+    assert_equal "$(path_kind "$nvim_config")" "$expected"
+    assert_empty "$(print -r -- "$HOME"/.config/nvim.bak.*(DN))"
+    assert_not_empty "$(print -r -- "$install_out" | grep 'WARNING' | grep -F '.config/nvim')"
+    case "$row" in
+      file) assert_equal "$(cat "$nvim_config")" "MINE" ;;
+      dir)
+        assert_equal "$(cat "$nvim_config/mine.lua")" "MINE"
+        assert_equal "$(path_kind "$nvim_config/init.lua")" "none"
+        ;;
+      dir-own-init) assert_equal "$(path_kind "$nvim_config/init.lua")" "file" ;;
+      link-elsewhere) assert_empty "$(print -r -- "$HOME"/elsewhere/*(DN))" ;;
+    esac
+  done
+}
+
 setup
 run_test test_existing_agent_config_replaced_at_end_of_input
 run_test test_sections_and_zprofile_brew_shellenv
 run_test test_clean_runs_exit_0
 run_test test_declined_prompts_exit_0
 run_test test_step_failure_fails_install
+run_test test_neovim_links_config_directory
+run_test test_neovim_migrates_old_layout
+run_test test_neovim_skips_foreign_config
 run_test test_sourced_failure_returns_1
 cleanup
 finish_tests

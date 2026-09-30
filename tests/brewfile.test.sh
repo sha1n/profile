@@ -106,8 +106,8 @@ function test_profile_selection() {
   # <HOMEBREW_PROFILE_INSTALL_PROFILES, or <unset>>|<exit code>|<present entries or text>|<absent entries>
   for row in '<unset>|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
     '|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
-    'essentials|0|bat uv visual-studio-code sha1n/tap|mise docker-desktop goreleaser shellcheck' \
-    'dev|0|mise uv goreleaser shellcheck|docker-desktop' \
+    'essentials|0|bat uv visual-studio-code sha1n/tap lua-language-server stylua|mise docker-desktop goreleaser shellcheck gopls basedpyright typescript-language-server' \
+    'dev|0|mise uv goreleaser shellcheck lua-language-server stylua gopls basedpyright typescript-language-server|docker-desktop' \
     'workstation|0|docker-desktop mise uv visual-studio-code|' \
     'essentials workstation|0|docker-desktop mise uv visual-studio-code|' \
     'dev bogus|1|bogus|'; do
