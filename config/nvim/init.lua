@@ -11,10 +11,13 @@ vim.g.maplocalleader = ' '
 
 -- Lazy.nvim Bootstrap
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+local lockfile = vim.fn.stdpath("config") .. "/lazy-lock.json"
+-- Read as bytes ('b'), so the write-back after lazy.setup reproduces the committed file exactly.
+local committed_lock = vim.fn.filereadable(lockfile) == 1 and vim.fn.readfile(lockfile, "b") or nil
 if not vim.uv.fs_stat(lazypath) then
   -- Clone at the locked commit: lazy restore does not move lazy.nvim itself, so
   -- another commit here would be written back into lazy-lock.json.
-  local lock = vim.json.decode(table.concat(vim.fn.readfile(vim.fn.stdpath("config") .. "/lazy-lock.json"), "\n"))
+  local lock = vim.json.decode(table.concat(assert(committed_lock, "missing " .. lockfile), "\n"))
   local clone = vim.system({ "git", "clone", "--filter=blob:none", "https://github.com/folke/lazy.nvim.git", lazypath }):wait()
   local checkout = clone.code == 0
     and vim.system({ "git", "-C", lazypath, "checkout", lock["lazy.nvim"].commit }):wait()
@@ -109,7 +112,24 @@ require("lazy").setup({
       },
     },
   },
+}, {
+  -- Headless-only: with process streaming on, lazy writes a failed process's output
+  -- straight to stdout and never logs it at ERROR level, so task:has_errors() stays
+  -- false and ProfileSync cannot see the failure.
+  headless = { process = false },
 })
+
+-- lazy.setup installs the plugins that are missing at startup and then rewrites the whole
+-- lockfile from the installed commits, so one new plugin makes it lose the committed entry
+-- of every plugin whose installation is behind the lockfile. Put the committed file back,
+-- and drop lazy's in-memory copy of it, so ProfileSync and :Lazy restore target the
+-- committed versions. lock and _loaded are internal to lazy.nvim, but the lockfile pins
+-- lazy.nvim itself, so they cannot change under this config silently.
+if committed_lock and not vim.deep_equal(vim.fn.readfile(lockfile, "b"), committed_lock) then
+  vim.fn.writefile(committed_lock, lockfile, "b")
+  local lock_cache = require("lazy.manage.lock")
+  lock_cache.lock, lock_cache._loaded = {}, false
+end
 
 -- Options
 vim.o.hlsearch = true
@@ -208,17 +228,31 @@ end
 -- nvim --headless exits with 0 after errors, so the exit status must come from cquit.
 vim.api.nvim_create_user_command('ProfileSync', function()
   local failures = {}
+  local function collect_task_errors(plugins)
+    for _, plugin in pairs(plugins) do
+      for _, task in ipairs(plugin._.tasks or {}) do
+        if task:has_errors() then
+          table.insert(failures, 'plugin ' .. plugin.name .. ': ' .. task:output(vim.log.levels.ERROR))
+        end
+      end
+    end
+  end
 
   require('lazy').restore { wait = true, show = false }
   require('lazy').clean { wait = true, show = false }
-  for _, plugin in pairs(require('lazy.core.config').plugins) do
+  local lazy_config = require('lazy.core.config')
+  for _, plugin in pairs(lazy_config.plugins) do
     if not plugin._.installed then
       table.insert(failures, 'plugin not installed: ' .. plugin.name)
     end
-    for _, task in ipairs(plugin._.tasks or {}) do
-      if task:has_errors() then
-        table.insert(failures, 'plugin ' .. plugin.name .. ': ' .. task:output(vim.log.levels.ERROR))
-      end
+  end
+  collect_task_errors(lazy_config.plugins)
+  -- clean runs its tasks on to_clean, not on plugins, so a failed removal only shows up here.
+  collect_task_errors(lazy_config.to_clean)
+  -- lazy's fs.clean ignores the result of each remove, so a leftover directory is the only evidence.
+  for _, plugin in pairs(lazy_config.to_clean) do
+    if vim.uv.fs_stat(plugin.dir) then
+      table.insert(failures, 'plugin not removed: ' .. plugin.name)
     end
   end
 
@@ -238,6 +272,11 @@ vim.api.nvim_create_user_command('ProfileSync', function()
 
   for _, failure in ipairs(failures) do
     io.stderr:write(failure .. '\n')
+  end
+  -- restore and clean rewrite the lockfile from the installed commits even when they fail,
+  -- so a failed run would commit the wrong versions as the new target of the retry.
+  if #failures > 0 and committed_lock then
+    vim.fn.writefile(committed_lock, lockfile, 'b')
   end
   vim.cmd(#failures == 0 and 'qall!' or 'cquit 1')
 end, { desc = 'Restore plugins to lazy-lock.json and install the treesitter parsers' })
