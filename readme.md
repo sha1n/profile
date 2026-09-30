@@ -118,7 +118,7 @@ The nvim config is [config/nvim](config/nvim), which `install.sh` links as a dir
 
 `profile install` runs `nvim --headless +ProfileSync`. It restores the plugins to the versions of the lockfile, removes the plugins that the config does not list, and installs the treesitter parsers. It exits with non-zero on failure, and `profile install` then fails.
 
-The Brewfile owns the language servers and formatters: `lua-language-server` and `stylua` in `essentials`, and `gopls`, `basedpyright` and `typescript-language-server` in `dev`. The config enables each server whose binary is on `PATH`. There is no Mason.
+The Brewfile owns the language servers and formatters: `lua-language-server` and `stylua` in `essentials`, and `gopls`, `basedpyright` and `typescript` in `dev`. `typescript` is TypeScript 7, and nvim uses its native LSP (`tsc --lsp`). The config enables each server whose binary is on `PATH`. There is no Mason.
 
 To update the plugins, run `:Lazy update` in nvim, test the result, and commit `config/nvim/lazy-lock.json`.
 

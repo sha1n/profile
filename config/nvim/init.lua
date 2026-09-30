@@ -173,7 +173,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
   end,
 })
 
--- bin is explicit because some lspconfig definitions (ts_ls) set cmd to a function.
+-- bin is explicit because some lspconfig definitions (tsc) set cmd to a function.
 local servers = {
   lua_ls = {
     bin = 'lua-language-server',
@@ -187,7 +187,7 @@ local servers = {
   stylua = { bin = 'stylua' },
   gopls = { bin = 'gopls' },
   basedpyright = { bin = 'basedpyright-langserver' },
-  ts_ls = { bin = 'typescript-language-server' },
+  tsc = { bin = 'tsc' },
 }
 
 vim.lsp.config('*', {
