@@ -40,6 +40,8 @@ if profiles.include?("essentials")
 
   # Editors
   brew "neovim"
+  # nvim-treesitter compiles its parsers with this CLI
+  brew "tree-sitter-cli"
   brew "vim"
   cask "sublime-text"
 
