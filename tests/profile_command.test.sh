@@ -7,7 +7,7 @@ load_script="$profile_home/load.zsh"
 zsh_bin="$(command -v zsh)"
 # Linked into the stub directory, because a developer Mac may hold jq outside system_path.
 jq_bin="$(command -v jq)"
-# Holds no brew or mise on a developer Mac or a CI runner, so only the stubs can run.
+# Holds no brew, mise or nvim on a developer Mac or a CI runner, so only the stubs can run.
 system_path="/usr/bin:/bin"
 # TERM=dumb drops some sequences, so a colour terminal type makes the section escapes present.
 section_term="xterm-256color"
@@ -52,7 +52,7 @@ EOF
   chmod +x "$target"
 }
 
-# The exit code of the stubbed step <name> (git_pull, git_submodule, brew_bundle, mise,
+# The exit code of the stubbed step <name> (git_pull, git_submodule, brew_bundle, mise, nvim,
 # brew_dry, brew_force, brew_list, brew_rm_cask, brew_rm_formula, brew_untap, mise_ls,
 # mise_yes).
 stub_exit() {
@@ -128,7 +128,7 @@ prepare_case() {
   cp "$profile_home/brew/Brewfile" "$fake_repo/brew/Brewfile"
 
   local step
-  for step in git_pull git_submodule brew_bundle mise brew_dry brew_force brew_list \
+  for step in git_pull git_submodule brew_bundle mise nvim brew_dry brew_force brew_list \
     brew_rm_cask brew_rm_formula brew_untap mise_ls mise_yes; do
     stub_exit "$step" 0
   done
@@ -189,6 +189,7 @@ fi
 print -r -- "STUB $call"
 if [[ "$1" == bundle ]]; then
   [[ -f "$stub_dir/pending_mise" ]] && mv "$stub_dir/pending_mise" "$stub_dir/bin/mise"
+  [[ -f "$stub_dir/pending_nvim" ]] && mv "$stub_dir/pending_nvim" "$stub_dir/bin/nvim"
   exit "$(<"$stub_dir/brew_bundle_exit")"
 fi
 exit 0'
@@ -202,6 +203,9 @@ if [[ "$1" == ls || "$1" == prune ]]; then
 fi
 print -r -- "STUB $call"
 exit "$(<"$stub_dir/mise_exit")"'
+  write_stub "$stub_bin/nvim" '
+print -r -- "STUB $call"
+exit "$(<"$stub_dir/nvim_exit")"'
   # profile install must not run install.sh; a stub in the fake repo records any call.
   write_stub "$fake_repo/install.sh" 'exit 0'
 
@@ -216,6 +220,10 @@ step_call() {
     submodule) print -r -- "git -C $repo submodule update --init --recursive" ;;
     brew) print -r -- "brew bundle --no-upgrade --file $brewfile" ;;
     mise) print -r -- "mise install" ;;
+    # The --cmd flag runs before init.lua, so the config can tell a sync run from an
+    # editing session. The pcall wrapper quits nvim when :ProfileSync is missing or
+    # fails; a bare +ProfileSync would leave headless nvim waiting for input forever.
+    nvim) print -r -- "nvim --headless --cmd lua vim.g.profile_sync = true +lua local ok, err = pcall(vim.cmd, 'ProfileSync') if not ok then io.stderr:write(tostring(err) .. '\n') vim.cmd('cquit 1') end" ;;
     brew_dry) print -r -- "brew bundle cleanup --formula --cask --tap --file $brewfile" ;;
     brew_rm_cask) print -r -- "brew uninstall --cask orphan-cask" ;;
     brew_rm_formula) print -r -- "brew uninstall --formula --force orphan-formula other-formula" ;;
@@ -382,7 +390,8 @@ function test_failing_step_stops_the_run() {
   local row failing command steps
   # <stub that fails>|<command>|<steps that ran>
   for row in 'git_pull|update|pull' 'git_submodule|update|pull submodule' \
-    'brew_bundle|install essentials dev|brew' 'mise|install dev|brew mise'; do
+    'brew_bundle|install essentials dev|brew' 'nvim|install workstation|brew nvim' \
+    'nvim|install dev|brew nvim' 'mise|install dev|brew nvim mise'; do
     IFS='|' read -r failing command steps <<<"$row"
     prepare_case
     stub_exit "$failing" 1
@@ -391,6 +400,7 @@ function test_failing_step_stops_the_run() {
 
     print -r -- "row: $failing fails in profile $command"
     assert_equal "$rc" "1"
+    [[ "$failing" == nvim ]] && assert_contains "$out"$'\n'"$err" "nvim plugin sync failed"
     assert_equal "$calls" "$(step_calls_of ${=steps})"
     # The calls above hide the read-only orphan step, so only its title shows that it ran.
     assert_equal "$(title_and_step_sequence)" "$(expected_sequence ${=steps})"
@@ -404,9 +414,9 @@ function test_install_arguments() {
   local row args expected_rc steps word
   # <arguments>|<exit code>|<steps>|<HOMEBREW_PROFILE_INSTALL_PROFILES, or the name the error gives>
   for row in '|0|brew|essentials' 'essentials|0|brew|essentials' \
-    'essentials dev|0|brew mise|essentials dev' \
-    'workstation|0|brew mise|workstation' \
-    'essentials workstation|0|brew mise|essentials workstation' \
+    'essentials dev|0|brew nvim mise|essentials dev' \
+    'workstation|0|brew nvim mise|workstation' \
+    'essentials workstation|0|brew nvim mise|essentials workstation' \
     'bogus|2||bogus' 'essentials bogus|2||bogus' 'base|2||base'; do
     IFS='|' read -r args expected_rc steps word <<<"$row"
     prepare_case
@@ -441,8 +451,9 @@ function test_install_dev() {
 
   assert_equal "$rc" "0"
   # Exact calls, so neither brew bundle cleanup nor install.sh ran.
-  assert_equal "$calls" "$(step_calls_of brew mise)"
-  assert_equal "$(title_and_step_sequence)" "$(expected_sequence brew mise)"
+  assert_equal "$calls" "$(step_calls_of brew nvim mise)"
+  assert_equal "$(title_and_step_sequence)" "$(expected_sequence brew nvim mise)"
+  assert_contains "$(details_of 'nvim *')" "|stdin=devnull"
   assert_contains "$(details_of 'brew bundle*')" "|profiles=dev|no_autoremove=<unset>|stdin=devnull"
   assert_contains "$(details_of 'mise install*')" "mise install|cwd=/|"
   assert_contains "$(details_of 'mise install*')" "|stdin=devnull"
@@ -457,20 +468,40 @@ function test_install_finds_mise_from_brew_bundle() {
   collect_and_reset
 
   assert_equal "$rc" "0"
-  assert_equal "$calls" "$(step_calls_of brew mise)"
+  assert_equal "$calls" "$(step_calls_of brew nvim mise)"
+}
+
+# dev and workstation sync the Neovim plugins, after brew bundle, which may have just
+# installed nvim; essentials does not (the brew-only rows of test_install_arguments).
+function test_install_syncs_nvim_plugins() {
+  test_case_title
+  prepare_case
+  mv "$stub_bin/nvim" "$stub_dir/pending_nvim"
+  run_profile "$HOME" install dev
+  collect_and_reset
+
+  assert_equal "$rc" "0"
+  assert_equal "$calls" "$(step_calls_of brew nvim mise)"
+  assert_equal "$(title_and_step_sequence)" "$(expected_sequence brew nvim mise)"
+  assert_contains "$(details_of 'nvim *')" "$(step_call nvim)|"
+  assert_contains "$(details_of 'nvim *')" "|stdin=devnull"
 }
 
 # A skipped step prints its title, then a warning that names the missing tool, and
-# does not change the exit code.
+# does not change the exit code. A step outside the applied profiles (nvim and mise for
+# essentials) prints no title at all, even when its tool is missing.
 function test_install_missing_tools() {
   test_case_title
 
   local background="$(section_background)"
   local row removed args steps expected line entry
   local -a sequence
-  # <stubs removed>|<arguments>|<steps that ran>|<titles, and lines that name brew or mise>
-  for row in 'brew mise|dev||TITLE brew TITLE mise' 'brew|essentials||TITLE brew' \
-    'mise|dev|brew|TITLE brew TITLE mise'; do
+  # <stubs removed>|<arguments>|<steps that ran>|<titles, and lines that name brew, mise or nvim>
+  for row in 'brew mise|dev|nvim|TITLE brew TITLE nvim TITLE mise' 'brew|essentials||TITLE brew' \
+    'mise|dev|brew nvim|TITLE brew TITLE nvim TITLE mise' 'nvim|essentials|brew|TITLE brew' \
+    'nvim|dev|brew mise|TITLE brew TITLE nvim TITLE mise' \
+    'nvim|workstation|brew mise|TITLE brew TITLE nvim TITLE mise' \
+    'brew mise nvim|dev||TITLE brew TITLE nvim TITLE mise'; do
     IFS='|' read -r removed args steps expected <<<"$row"
     prepare_case
     for entry in ${=removed}; do
@@ -488,6 +519,8 @@ function test_install_missing_tools() {
         entry="brew"
       elif [[ "$line" == *mise* ]]; then
         entry="mise"
+      elif [[ "$line" == *nvim* ]]; then
+        entry="nvim"
       fi
       [[ -n "$entry" && "$entry" != "${sequence[-1]}" ]] && sequence+=("$entry")
     done
@@ -501,13 +534,14 @@ function test_install_missing_tools() {
 
 # The Brewfile `known` line is the only list of profiles: a name added there is accepted,
 # and a Brewfile without the line, or no Brewfile, stops the run. The order of the line
-# is the chain, so a name after dev applies dev and runs mise, and a name before it does not.
+# is the chain, so a name after dev applies dev and runs the nvim sync and mise, and a
+# name before it runs neither.
 function test_install_reads_known_list_from_brewfile() {
   test_case_title
 
   local row content args expected_rc steps word
   # <Brewfile content, or - for no file>|<arguments>|<exit code>|<steps>|<profiles value or error word>
-  for row in 'known = %w[essentials dev extra]|extra|0|brew mise|extra' \
+  for row in 'known = %w[essentials dev extra]|extra|0|brew nvim mise|extra' \
     'known = %w[pre essentials dev]|pre|0|brew|pre' \
     '# no profile list here||1||Brewfile' '-|essentials|1||Brewfile'; do
     IFS='|' read -r content args expected_rc steps word <<<"$row"
@@ -992,6 +1026,7 @@ run_test test_failing_step_stops_the_run
 run_test test_install_arguments
 run_test test_install_dev
 run_test test_install_finds_mise_from_brew_bundle
+run_test test_install_syncs_nvim_plugins
 run_test test_install_missing_tools
 run_test test_install_reads_known_list_from_brewfile
 run_test test_cleanup_dry_runs

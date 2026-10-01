@@ -15,7 +15,7 @@ function link_dotfile() {
 function link_dotfiles() {
   __profile_log_info "linking dot files..."
   for file in "$dotfiles_dir"/**/*(.DN:t); do
-    if [[ "$file" != ".gitconfig" && "$file" != "init.lua" ]]; then
+    if [[ "$file" != ".gitconfig" ]]; then
       link_dotfile "$file" && __profile_log_success "ok!" || __profile_log_error "failed to link '$file'!"
     fi
   done
@@ -23,14 +23,27 @@ function link_dotfiles() {
 
 function setup_neovim() {
   __profile_log_info "updating neovim config..."
+  local src="$SHA1N_PROFILE_HOME/config/nvim"
   local nvim_config_dir="$HOME/.config/nvim"
-  
-  if [[ ! -d "$nvim_config_dir" ]]; then
-     mkdir -p "$nvim_config_dir"
+
+  if [[ -L "$nvim_config_dir" && "$(readlink "$nvim_config_dir")" == "$src" ]]; then
+    return 0
   fi
 
-  __profile_log_info "linking init.lua..."
-  ln -sf "$dotfiles_dir/init.lua" "$nvim_config_dir/init.lua"
+  if [[ -d "$nvim_config_dir" && ! -L "$nvim_config_dir" ]]; then
+    __profile_log_warn "'$nvim_config_dir' is a directory, not a link to the profile. Run install.sh to migrate it. Skipping..."
+    return 0
+  fi
+
+  # A regular file or a link to a foreign config is user-owned; only install.sh may replace targets.
+  if [[ -e "$nvim_config_dir" || -L "$nvim_config_dir" ]]; then
+    __profile_log_warn "'$nvim_config_dir' exists and is not linked to the profile. Skipping..."
+    return 0
+  fi
+
+  mkdir -p "${nvim_config_dir:h}" || { __profile_log_error "failed to create '${nvim_config_dir:h}'!"; return 1; }
+  __profile_log_info "linking the nvim config directory..."
+  ln -s "$src" "$nvim_config_dir"
 }
 
 link_dotfiles

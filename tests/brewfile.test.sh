@@ -98,7 +98,9 @@ function test_profile_chain() {
 }
 
 # Each profile applies the profiles before it in the chain. Work-only apps and the
-# language runtimes (mise owns them) are listed by no profile.
+# language runtimes (mise owns them) are listed by no profile. The editors (neovim, vim)
+# are essentials; the nvim toolchain (tree-sitter-cli, language servers, formatters)
+# belongs to dev, whose profile install runs the nvim plugin sync.
 function test_profile_selection() {
   test_case_title
 
@@ -106,8 +108,8 @@ function test_profile_selection() {
   # <HOMEBREW_PROFILE_INSTALL_PROFILES, or <unset>>|<exit code>|<present entries or text>|<absent entries>
   for row in '<unset>|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
     '|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
-    'essentials|0|bat uv visual-studio-code sha1n/tap|mise docker-desktop goreleaser shellcheck' \
-    'dev|0|mise uv goreleaser shellcheck|docker-desktop' \
+    'essentials|0|bat uv visual-studio-code sha1n/tap neovim vim|mise docker-desktop goreleaser shellcheck gopls basedpyright typescript tree-sitter-cli lua-language-server stylua' \
+    'dev|0|mise uv goreleaser shellcheck tree-sitter-cli lua-language-server stylua gopls basedpyright typescript neovim vim|docker-desktop' \
     'workstation|0|docker-desktop mise uv visual-studio-code|' \
     'essentials workstation|0|docker-desktop mise uv visual-studio-code|' \
     'dev bogus|1|bogus|'; do

@@ -8,8 +8,10 @@
 #   update      Pull the current branch of the repo, update its submodules, and remove
 #               the submodules that the repo no longer lists
 #   install     Install the Homebrew packages of the given profiles (default: essentials),
-#               and the mise runtimes from dev on. The profiles form a chain: each one
-#               includes the ones before it, so workstation includes dev and essentials
+#               and from dev on restore the nvim plugins and parsers to
+#               config/nvim/lazy-lock.json and install the mise runtimes. The profiles form
+#               a chain: each one includes the ones before it, so workstation includes dev
+#               and essentials
 #   cleanup     List the Homebrew packages and mise runtimes that no profile lists,
 #               and remove them after a confirmation
 #   -h, --help  Show this help and exit
@@ -29,8 +31,10 @@ function __profile_cmd_usage() {
   update      pull the current branch of the repo, update its submodules, and remove
               the submodules that the repo no longer lists
   install     install the Homebrew packages of the given profiles (default: essentials),
-              and the mise runtimes from dev on. The profiles form a chain: each one
-              includes the ones before it, so workstation includes dev and essentials
+              and from dev on restore the nvim plugins and parsers to
+              config/nvim/lazy-lock.json and install the mise runtimes. The profiles form
+              a chain: each one includes the ones before it, so workstation includes dev
+              and essentials
   cleanup     list the Homebrew packages and mise runtimes that no profile lists,
               and remove them after a confirmation
   -h, --help  show this help and exit"
@@ -339,10 +343,26 @@ function __profile_cmd_install() {
     __profile_log_warn "brew is not on PATH. Skipping brew bundle..." >&2
   fi
 
+  # The nvim plugin sync and the mise runtimes belong to the dev setup; essentials runs stock nvim.
   __profile_cmd_chain_reaches dev "${profiles[@]}" || return 0
 
-  # brew bundle may have just installed mise, and the command hash table predates it.
+  # brew bundle may have just installed nvim or mise, and the command hash table predates them.
   rehash
+  __profile_log_section "Neovim plugins"
+  if (( $+commands[nvim] )); then
+    # --cmd runs before init.lua, so the config can tell a sync run from an editing
+    # session. A ~/.config/nvim that is not this repo's has no :ProfileSync, and an
+    # init.lua that fails early loses it; a bare +ProfileSync would then leave headless
+    # nvim waiting for input forever, so every failure must reach cquit. pcall, not :try,
+    # because an error in a +cmd line aborts the whole line, catch and cquit included.
+    nvim --headless \
+      --cmd 'lua vim.g.profile_sync = true' \
+      "+lua local ok, err = pcall(vim.cmd, 'ProfileSync') if not ok then io.stderr:write(tostring(err) .. '\n') vim.cmd('cquit 1') end" \
+      </dev/null || { __profile_log_error "nvim plugin sync failed" >&2; return 1; }
+  else
+    __profile_log_warn "nvim is not on PATH. Skipping the nvim plugin sync..." >&2
+  fi
+
   __profile_log_section "mise runtimes"
   if (( $+commands[mise] )); then
     # Project config in the caller's directory (mise.toml, .tool-versions, and the idiomatic
