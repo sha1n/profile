@@ -2,11 +2,11 @@
 autoload -U colors && colors
 
 function __profile_log_error() {
-  __profile_log_log "red" "ERROR" $1
+  __profile_log_log "red" "ERROR" $1 >&2
 }
 
 function __profile_log_warn() {
-  __profile_log_log "yellow" "WARNING" $1
+  __profile_log_log "yellow" "WARNING" $1 >&2
 }
 
 function __profile_log_info() {

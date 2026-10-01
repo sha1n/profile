@@ -51,11 +51,11 @@ function __profile_cmd_update() {
 
   __profile_log_section "Repository"
   git -C "$repo" pull origin "$(git -C "$repo" branch --show-current)" ||
-    { __profile_log_error "git pull failed" >&2; return 1; }
+    { __profile_log_error "git pull failed"; return 1; }
 
   __profile_log_section "Submodules"
   git -C "$repo" submodule update --init --recursive ||
-    { __profile_log_error "git submodule update failed" >&2; return 1; }
+    { __profile_log_error "git submodule update failed"; return 1; }
 
   __profile_log_section "Orphaned submodules"
   __profile_cmd_remove_orphans "$repo"
@@ -74,7 +74,7 @@ function __profile_cmd_listed_submodules() {
   code=$?
   # Exit code 1 means no match.
   if (( code > 1 )); then
-    __profile_log_error "could not read $repo/.gitmodules (exit code $code)" >&2
+    __profile_log_error "could not read $repo/.gitmodules (exit code $code)"
     return 1
   fi
   for key in "${(@f)output}"; do
@@ -93,7 +93,7 @@ function __profile_cmd_submodule_sections() {
   output="$(git -C "$repo" config --local --name-only --get-regexp '^submodule\..+\.[^.]+$')"
   code=$?
   if (( code > 1 )); then
-    __profile_log_error "could not read the submodule sections of $repo/.git/config (exit code $code)" >&2
+    __profile_log_error "could not read the submodule sections of $repo/.git/config (exit code $code)"
     return 1
   fi
   for key in "${(@f)output}"; do
@@ -114,7 +114,7 @@ function __profile_cmd_submodule_gitdirs() {
 
   # The common dir, not <repo>/.git, so that a linked worktree finds the shared modules.
   common="$(git -C "$repo" rev-parse --git-common-dir)" ||
-    { __profile_log_error "could not find the git directory of $repo" >&2; return 1; }
+    { __profile_log_error "could not find the git directory of $repo"; return 1; }
   if [[ -n "$common" ]]; then
     [[ "$common" == /* ]] || common="$repo/$common"
     REPLY="${common:A}/modules"
@@ -220,7 +220,7 @@ function __profile_cmd_remove_orphan() {
   worktree="$(__profile_cmd_submodule_worktree "$repo" "$name" "$gitdir")"
   if [[ -n "$gitdir" && "${gitdir:A}" != "$modules"/* ]] ||
      [[ "$worktree" == "$repo" || "$worktree" != "$repo"/* ]]; then
-    __profile_log_warn "kept orphaned submodule '$name': a path outside the repo" >&2
+    __profile_log_warn "kept orphaned submodule '$name': a path outside the repo"
     return 0
   fi
   # Other content can occupy the path, for example files that the repo now tracks there.
@@ -229,7 +229,7 @@ function __profile_cmd_remove_orphan() {
   local REPLY=""
   __profile_cmd_orphan_keep_reason "$gitdir" "$live_worktree"
   if [[ -n "$REPLY" ]]; then
-    __profile_log_warn "kept orphaned submodule '$name': $REPLY" >&2
+    __profile_log_warn "kept orphaned submodule '$name': $REPLY"
     return 0
   fi
 
@@ -267,7 +267,7 @@ function __profile_cmd_remove_orphans() {
   for name in "${candidates[@]}"; do
     (( ${listed[(Ie)$name]} )) && continue
     if ! __profile_cmd_remove_orphan "$repo" "$name" "$modules" "${sections[(Ie)$name]}"; then
-      __profile_log_error "failed to remove orphaned submodule '$name'" >&2
+      __profile_log_error "failed to remove orphaned submodule '$name'"
       failed=1
     fi
   done
@@ -292,7 +292,7 @@ function __profile_cmd_known_profiles() {
     done
   fi
   if (( ! ${#reply} )); then
-    __profile_log_error "no 'known' profile list in $brewfile" >&2
+    __profile_log_error "no 'known' profile list in $brewfile"
     return 1
   fi
 }
@@ -327,7 +327,7 @@ function __profile_cmd_install() {
       return 2
     fi
     if (( ! ${known_profiles[(Ie)$name]} )); then
-      __profile_log_error "unknown machine profile: '$name'" >&2
+      __profile_log_error "unknown machine profile: '$name'"
       return 2
     fi
     profiles+=("$name")
@@ -338,9 +338,9 @@ function __profile_cmd_install() {
   if (( $+commands[brew] )); then
     HOMEBREW_PROFILE_INSTALL_PROFILES="${(j: :)profiles}" \
       brew bundle --no-upgrade --file "$repo/brew/Brewfile" </dev/null ||
-      { __profile_log_error "brew bundle failed" >&2; return 1; }
+      { __profile_log_error "brew bundle failed"; return 1; }
   else
-    __profile_log_warn "brew is not on PATH. Skipping brew bundle..." >&2
+    __profile_log_warn "brew is not on PATH. Skipping brew bundle..."
   fi
 
   # The nvim plugin sync and the mise runtimes belong to the dev setup; essentials runs stock nvim.
@@ -358,18 +358,18 @@ function __profile_cmd_install() {
     nvim --headless \
       --cmd 'lua vim.g.profile_sync = true' \
       "+lua local ok, err = pcall(vim.cmd, 'ProfileSync') if not ok then io.stderr:write(tostring(err) .. '\n') vim.cmd('cquit 1') end" \
-      </dev/null || { __profile_log_error "nvim plugin sync failed" >&2; return 1; }
+      </dev/null || { __profile_log_error "nvim plugin sync failed"; return 1; }
   else
-    __profile_log_warn "nvim is not on PATH. Skipping the nvim plugin sync..." >&2
+    __profile_log_warn "nvim is not on PATH. Skipping the nvim plugin sync..."
   fi
 
   __profile_log_section "mise runtimes"
   if (( $+commands[mise] )); then
     # Project config in the caller's directory (mise.toml, .tool-versions, and the idiomatic
     # files enabled by config/mise/profile.toml) would otherwise replace the machine-profile runtimes.
-    (cd / && mise install </dev/null) || { __profile_log_error "mise install failed" >&2; return 1; }
+    (cd / && mise install </dev/null) || { __profile_log_error "mise install failed"; return 1; }
   else
-    __profile_log_warn "mise is not on PATH. Skipping mise install..." >&2
+    __profile_log_warn "mise is not on PATH. Skipping mise install..."
   fi
 }
 
@@ -472,7 +472,7 @@ function __profile_cmd_unlisted_candidates() {
   shift 2
 
   entries="$(__profile_cmd_profile_entries "$profiles" "$brewfile")" ||
-    { __profile_log_error "the profile entries could not be listed" >&2; return 1; }
+    { __profile_log_error "the profile entries could not be listed"; return 1; }
   for word in "${(@f)entries}"; do
     [[ -n "$word" ]] || continue
     type="${word%%:*}" name="${word#*:}"
@@ -489,12 +489,12 @@ function __profile_cmd_unlisted_candidates() {
     for name in "${(@f)$(__profile_cmd_names_of_type "$type" "$@")}"; do
       [[ -n "$name" ]] || continue
       if ! names=("${(@f)$(__profile_cmd_package_names "$type" "$name")}"); then
-        __profile_log_warn "kept $name: its names could not be read" >&2
+        __profile_log_warn "kept $name: its names could not be read"
         continue
       fi
       names=("${(@f)$(__profile_cmd_with_short_names "${names[@]}")}")
       if (( ${#${(@)names:*entry_names}} )); then
-        __profile_log_warn "kept $name: a profile lists it" >&2
+        __profile_log_warn "kept $name: a profile lists it"
         continue
       fi
       print -r -- "${type}:${name}"
@@ -503,7 +503,7 @@ function __profile_cmd_unlisted_candidates() {
   for name in "${(@f)$(__profile_cmd_names_of_type tap "$@")}"; do
     [[ -n "$name" ]] || continue
     if (( ${entry_taps[(Ie)$name]} )); then
-      __profile_log_warn "kept $name: a profile lists it" >&2
+      __profile_log_warn "kept $name: a profile lists it"
       continue
     fi
     print -r -- "tap:${name}"
@@ -562,14 +562,14 @@ function __profile_cmd_cleanup_brew() {
     brew bundle cleanup --formula --cask --tap --file "$brewfile" </dev/null)"
   code=$?
   if (( code > 1 )); then
-    __profile_log_error "the package list failed with exit code $code" >&2
+    __profile_log_error "the package list failed with exit code $code"
     return 1
   fi
   candidates=("${(@f)$(__profile_cmd_cleanup_candidates "$output")}")
   candidates=("${(@)candidates:#}")
   # A list-only run that exits with 1 always prints a list, so its absence means Homebrew failed.
   if (( code == 1 && ! ${#candidates} )); then
-    __profile_log_error "Homebrew failed with no package list (exit code $code)" >&2
+    __profile_log_error "Homebrew failed with no package list (exit code $code)"
     return 1
   fi
   if (( ${#candidates} )); then
@@ -592,7 +592,7 @@ function __profile_cmd_cleanup_brew() {
   # The list-only run is not repeated with --force: Homebrew would compute its own list
   # again, without the guard above.
   __profile_cmd_remove_packages "${candidates[@]}" ||
-    { __profile_log_error "the package removal failed" >&2; return 1; }
+    { __profile_log_error "the package removal failed"; return 1; }
 }
 
 function __profile_cmd_cleanup_mise() {
@@ -602,14 +602,14 @@ function __profile_cmd_cleanup_mise() {
   # mise writes the `prune --dry-run` list to stderr, and `--dry-run-code` exits with 1
   # both when versions are prunable and on a config error, so only this JSON is reliable.
   json="$(cd / && mise ls --prunable --json </dev/null)" ||
-    { __profile_log_error "the runtime list failed with exit code $?" >&2; return 1; }
+    { __profile_log_error "the runtime list failed with exit code $?"; return 1; }
   if (( ! $+commands[jq] )); then
-    __profile_log_error "jq is not on PATH, so the runtime list cannot be read" >&2
+    __profile_log_error "jq is not on PATH, so the runtime list cannot be read"
     return 1
   fi
   list="$(print -r -- "$json" |
     jq -r 'to_entries[] | .key as $tool | .value[] | "\($tool)@\(.version)"')" ||
-    { __profile_log_error "the runtime list could not be read" >&2; return 1; }
+    { __profile_log_error "the runtime list could not be read"; return 1; }
 
   local -a versions=("${(@f)list}")
   versions=("${(@)versions:#}")
@@ -623,7 +623,7 @@ function __profile_cmd_cleanup_mise() {
     return 0
   fi
   (cd / && mise prune --tools --yes </dev/null) ||
-    { __profile_log_error "the runtime removal failed" >&2; return 1; }
+    { __profile_log_error "the runtime removal failed"; return 1; }
 }
 
 function __profile_cmd_cleanup() {
@@ -642,14 +642,14 @@ function __profile_cmd_cleanup() {
     # A subset would make the packages of the other profiles look unlisted.
     __profile_cmd_cleanup_brew "${(j: :)reply}" || return 1
   else
-    __profile_log_warn "brew is not on PATH. Skipping brew bundle cleanup..." >&2
+    __profile_log_warn "brew is not on PATH. Skipping brew bundle cleanup..."
   fi
 
   __profile_log_section "mise prune"
   if (( $+commands[mise] )); then
     __profile_cmd_cleanup_mise || return 1
   else
-    __profile_log_warn "mise is not on PATH. Skipping mise prune..." >&2
+    __profile_log_warn "mise is not on PATH. Skipping mise prune..."
   fi
 }
 

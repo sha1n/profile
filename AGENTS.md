@@ -79,7 +79,7 @@ CI runs on **ubuntu-latest** and **macos-latest** (GitHub Actions, `.github/work
 ## Implementation Conventions
 
 ### Shell Functions
-- **Logging**: `__profile_log_{error,warn,info,success}` from `scripts/lib.zsh`; start each step of a setup script with `__profile_log_section <title>` (bold, blue background)
+- **Logging**: `__profile_log_{error,warn,info,success}` from `scripts/lib.zsh`; start each step of a setup script with `__profile_log_section <title>` (bold, blue background). `error` and `warn` write to stderr, the others to stdout; never add `>&2` at a call site
 - **Tree search**: `__profile_search_ancestor_tree <filename>` walks up from `$PWD` to `/` looking for a file
 - **Private functions**: Prefix with `__profile_` to indicate internal use
 - **Public functions** in `include/functions` are user-facing shell commands (e.g., `start`, `jest`, `alias_last`, `wt`)
