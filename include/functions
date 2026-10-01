@@ -136,12 +136,46 @@ function __profile_git_repo_root() {
   local git_common_dir
   git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
   if [[ $? -ne 0 ]]; then
-    __profile_log_error "not inside a git repository"
+    __profile_log_error "not inside a git repository" >&2
     return 1
   fi
   # Resolve to absolute path (relative when in main worktree, absolute in secondary)
   # then take the parent of .git to get the repo root.
   echo "${git_common_dir:A:h}"
+}
+
+# origin/HEAD exists only in clones (or after `git remote set-head`), so local
+# main and master are the fallback for repos that were created locally.
+function __profile_git_default_branch() {
+  git rev-parse --git-dir >/dev/null 2>&1 || {
+    __profile_log_error "not inside a git repository" >&2
+    return 1
+  }
+
+  local origin_head
+  if origin_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null); then
+    echo "${origin_head#origin/}"
+    return 0
+  fi
+
+  local candidate
+  for candidate in main master; do
+    if git show-ref --verify --quiet "refs/heads/$candidate"; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  __profile_log_error "cannot find the default branch (set it with: git remote set-head origin --auto)" >&2
+  return 1
+}
+
+# An empty branch argument is not safe: `git pull origin ""` exits 0 and pulls
+# the remote HEAD, so the command must not run when the lookup fails.
+function __profile_git_with_default_branch() {
+  local branch
+  branch=$(__profile_git_default_branch) || return 1
+  "$@" "$branch"
 }
 
 function wt() {
