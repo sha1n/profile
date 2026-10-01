@@ -52,7 +52,6 @@ vendor/
 # Antigravity
 .gemini
 .antigravitycli/
-.agents
 
 # Other dirty files
 *.log
