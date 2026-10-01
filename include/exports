@@ -30,6 +30,6 @@ export PIP_REQUIRE_VIRTUALENV=true
 # Anthropic / Claude Code
 #
 export CLAUDE_CODE_NEW_INIT=1
-export ANTHROPIC_MODEL="claude-fable-5[1m]"
+export ANTHROPIC_MODEL="claude-opus-5-5[1m]"
 # Personal convention used in scripts etc.
 export X_CLAUDE_CODE_DEFAULT_EFFORT_LEVEL="high"
