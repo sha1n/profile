@@ -136,7 +136,7 @@ function __profile_git_repo_root() {
   local git_common_dir
   git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
   if [[ $? -ne 0 ]]; then
-    __profile_log_error "not inside a git repository"
+    __profile_log_error "not inside a git repository" >&2
     return 1
   fi
   # Resolve to absolute path (relative when in main worktree, absolute in secondary)
@@ -148,7 +148,7 @@ function __profile_git_repo_root() {
 # main and master are the fallback for repos that were created locally.
 function __profile_git_default_branch() {
   git rev-parse --git-dir >/dev/null 2>&1 || {
-    __profile_log_error "not inside a git repository"
+    __profile_log_error "not inside a git repository" >&2
     return 1
   }
 
@@ -166,7 +166,7 @@ function __profile_git_default_branch() {
     fi
   done
 
-  __profile_log_error "cannot find the default branch (set it with: git remote set-head origin --auto)"
+  __profile_log_error "cannot find the default branch (set it with: git remote set-head origin --auto)" >&2
   return 1
 }
 
