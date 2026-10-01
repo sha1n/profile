@@ -68,6 +68,16 @@ function test_default_branch_not_git_repo() {
   assert_exit_code 1 "__profile_git_default_branch"
 }
 
+function test_with_default_branch_reports_error_on_stderr() {
+  test_case_title
+  create_repo "$HOME/repo-stderr" develop
+  cd "$HOME/repo-stderr"
+
+  local stderr
+  stderr=$(__profile_git_with_default_branch echo ran 2>&1 >/dev/null)
+  assert_contains "$stderr" "git remote set-head origin --auto"
+}
+
 function test_with_default_branch_appends_branch() {
   test_case_title
   create_repo "$HOME/repo-append" main
@@ -121,6 +131,7 @@ run_test test_default_branch_local_master
 run_test test_default_branch_prefers_main_over_master
 run_test test_default_branch_unknown
 run_test test_default_branch_not_git_repo
+run_test test_with_default_branch_reports_error_on_stderr
 run_test test_with_default_branch_appends_branch
 run_test test_with_default_branch_skips_command_on_failure
 run_test test_trunk_checks_out_default_branch

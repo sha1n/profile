@@ -83,6 +83,10 @@ function test_wt_not_git_repo() {
   cd "$non_repo"
 
   assert_exit_code 1 "wt some-branch"
+
+  local stderr
+  stderr=$(wt some-branch 2>&1 >/dev/null)
+  assert_contains "$stderr" "not inside a git repository"
 }
 
 function test_wt_slash_branch() {
