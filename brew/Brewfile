@@ -51,8 +51,6 @@ if profiles.include?("essentials")
   brew "git-filter-repo"
   brew "gnupg"
 
-  cask "warp"
-
   cask "blackhole-2ch"
   cask "brave-browser"
 
@@ -71,12 +69,14 @@ if profiles.include?("dev")
   brew "shellcheck"
   brew "glab"
   brew "sha1n/tap/hako"
+  brew "starship"
 
   # AI and agents
   brew "openspec"
   cask "antigravity-cli"
   cask "codex"
   cask "sha1n/tap/acdc-mcp", trusted: true
+  cask "stablyai/orca/orca", trusted: true
 
   # Language servers for nvim. basedpyright depends on the Homebrew node formula, which
   # openspec already pulls in; mise still owns the node that projects use, so add no node
