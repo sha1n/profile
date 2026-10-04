@@ -1,0 +1,9 @@
+#!/usr/bin/env zsh
+
+# Starship errors on a dumb terminal at init and at every prompt, which no stderr redirect here can cover.
+if (( $+commands[starship] )) && [[ $TERM != dumb ]]; then
+  () {
+    local starship_init
+    starship_init="$(starship init zsh 2>/dev/null)" && eval "$starship_init"
+  }
+fi
