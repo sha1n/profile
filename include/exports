@@ -16,6 +16,9 @@ PATH="$PATH:$HOME/go/bin"
 # Homebrew: a plain `brew bundle` reads the repo Brewfile from any directory.
 export HOMEBREW_BUNDLE_FILE="$SHA1N_PROFILE_HOME/brew/Brewfile"
 
+# Starship reads the repo config directly, so no ~/.config/starship.toml link is needed.
+export STARSHIP_CONFIG="$SHA1N_PROFILE_HOME/config/starship.toml"
+
 # Backup
 export BACKUP_DST_PATH="/Volumes/Backup/latest"
 export BACKUP_SRC_PATH="/Volumes/Content"

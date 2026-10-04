@@ -30,6 +30,7 @@ source $SHA1N_PROFILE_HOME/include/functions
 source $SHA1N_PROFILE_HOME/include/keybindings
 source $SHA1N_PROFILE_HOME/include/completions
 source $SHA1N_PROFILE_HOME/include/history
+source $SHA1N_PROFILE_HOME/include/prompt
 
 # fzf-tab: after compinit (include/completions), before zsh-syntax-highlighting
 if [[ -o interactive ]]; then

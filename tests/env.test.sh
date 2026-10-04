@@ -19,19 +19,31 @@ load_and_eval() {
 }
 
 eval_load_eval() {
-  local search_path="$1" before="$2" after="$3"
-  env -i HOME="$HOME" PATH="$search_path" TERM=dumb \
+  local search_path="$1" before="$2" after="$3" term="${4:-dumb}"
+  env -i HOME="$HOME" PATH="$search_path" TERM="$term" \
     "$zsh_bin" -f -c 'eval "$2"; source "$1"; eval "$3"' _ "$load_script" "$before" "$after"
 }
 
 load_stderr() {
-  local search_path="$1"
-  env -i HOME="$HOME" PATH="$search_path" TERM=dumb \
+  local search_path="$1" term="${2:-dumb}"
+  env -i HOME="$HOME" PATH="$search_path" TERM="$term" \
     "$zsh_bin" -f -c 'source "$1" 2>&1 >/dev/null' _ "$load_script"
 }
 
 new_stub_dir() {
   mktemp -d "${TMPDIR:-/tmp}/env_test_stubs.XXXXXX"
+}
+
+write_starship_stub() {
+  local stub_dir="$1" init_status="$2"
+  cat >"$stub_dir/starship" <<EOF
+#!/bin/sh
+if [ "\$1" = "init" ] && [ "\$2" = "zsh" ]; then
+  [ $init_status -eq 0 ] || exit $init_status
+  echo "PROMPT='starship-stub> '"
+fi
+EOF
+  chmod +x "$stub_dir/starship"
 }
 
 function test_pip_require_virtualenv() {
@@ -54,6 +66,17 @@ function test_homebrew_bundle_file() {
   assert_equal "$value" "$profile_home/brew/Brewfile"
   assert_contains "$exported" "export"
   assert_equal "$profiles_type" ""
+}
+
+function test_starship_config() {
+  test_case_title
+
+  local exported="$(load_and_eval "$system_path" 'print -r -- "${(t)STARSHIP_CONFIG}"')"
+  local value="$(load_and_eval "$system_path" 'print -r -- "$STARSHIP_CONFIG"')"
+
+  assert_equal "$value" "$profile_home/config/starship.toml"
+  assert_contains "$exported" "export"
+  assert_file_exists "$value"
 }
 
 function test_go_bin_on_path() {
@@ -115,7 +138,7 @@ EOF
   assert_empty "$err"
 }
 
-function test_prompt_not_set() {
+function test_prompt_not_set_without_starship() {
   test_case_title
 
   local before="PROMPT='sentinel> '; RPROMPT='right-sentinel'"
@@ -129,6 +152,47 @@ function test_prompt_not_set() {
   assert_equal "$rprompt" "right-sentinel"
 }
 
+function test_starship_init_sets_prompt() {
+  test_case_title
+
+  local stub_dir="$(new_stub_dir)"
+  write_starship_stub "$stub_dir" 0
+
+  local prompt="$(eval_load_eval "$stub_dir:$system_path" "PROMPT='sentinel> '" 'print -r -- "$PROMPT"' xterm-256color)"
+
+  rm -rf "$stub_dir"
+
+  assert_equal "$prompt" "starship-stub> "
+}
+
+function test_starship_skipped_on_dumb_terminal() {
+  test_case_title
+
+  local stub_dir="$(new_stub_dir)"
+  write_starship_stub "$stub_dir" 0
+
+  local prompt="$(eval_load_eval "$stub_dir:$system_path" "PROMPT='sentinel> '" 'print -r -- "$PROMPT"' dumb)"
+
+  rm -rf "$stub_dir"
+
+  assert_equal "$prompt" "sentinel> "
+}
+
+function test_starship_init_failure_is_silent() {
+  test_case_title
+
+  local stub_dir="$(new_stub_dir)"
+  write_starship_stub "$stub_dir" 1
+
+  local prompt="$(eval_load_eval "$stub_dir:$system_path" "PROMPT='sentinel> '" 'print -r -- "$PROMPT"' xterm-256color)"
+  local err="$(load_stderr "$stub_dir:$system_path" xterm-256color)"
+
+  rm -rf "$stub_dir"
+
+  assert_equal "$prompt" "sentinel> "
+  assert_empty "$err"
+}
+
 function test_no_theme_functions() {
   test_case_title
 
@@ -140,11 +204,15 @@ function test_no_theme_functions() {
 setup
 run_test test_pip_require_virtualenv
 run_test test_homebrew_bundle_file
+run_test test_starship_config
 run_test test_go_bin_on_path
 run_test test_mise_activated
 run_test test_mise_absent_is_silent
 run_test test_fzf_without_zsh_flag_is_silent
-run_test test_prompt_not_set
+run_test test_prompt_not_set_without_starship
+run_test test_starship_init_sets_prompt
+run_test test_starship_skipped_on_dumb_terminal
+run_test test_starship_init_failure_is_silent
 run_test test_no_theme_functions
 cleanup
 finish_tests
