@@ -130,6 +130,15 @@ function pytestt() {
   fi
 }
 
+#
+# Injects the profile status line; Orca rewrites statusLine in ~/.claude/settings.json,
+# and --settings outranks user settings without touching that file.
+#
+function claude() {
+  local statusline_command="${(q)SHA1N_PROFILE_HOME}/agents/claude/statusline_wrapper.sh"
+  command claude --settings "$(jq -cn --arg cmd "$statusline_command" '{statusLine: {type: "command", command: $cmd}}')" "$@"
+}
+
 # Git worktree management
 
 function __profile_git_repo_root() {
