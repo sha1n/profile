@@ -3,7 +3,7 @@
 # Each git module after the branch starts with its own space, so the group ends with one space only in a repo.
 format = """
 $username$hostname$directory\
-($git_branch$git_commit$git_state${custom.git_files}$git_metrics$git_status )\
+($git_branch$git_commit$git_state$git_metrics$git_status )\
 $all"""
 
 palette = 'git'
@@ -33,25 +33,14 @@ format = '[ \($hash$tag\)]($style)'
 style = 'fg:yellow'
 format = '[ \($state( $progress_current/$progress_total)\)]($style)'
 
-# Starship has no variable for the total number of changed files.
-# --ignore-submodules=dirty skips the scan of every submodule's working tree, which
-# can push the module past command_timeout; a moved submodule commit still counts.
-[custom.git_files]
-description = 'Number of changed files, staged, unstaged or untracked'
-when = true
-require_repo = true
-shell = ['sh']
-command = 'n=$(git status --porcelain --ignore-submodules=dirty | wc -l | tr -d " "); [ "$n" -eq 0 ] || echo "$n"'
-style = 'fg:muted'
-format = '([ ± $output]($style))'
-
-# Untracked files count in ± N but add no lines here: git_metrics diffs tracked files against HEAD.
+# Untracked files add no lines here: git_metrics diffs tracked files against HEAD.
 [git_metrics]
 disabled = false
 ignore_submodules = true
 format = '( [•](fg:muted)( [+$added](fg:added))( [-$deleted](fg:deleted)))'
 
-# File counts come from custom.git_files; the stash, conflict and remote state left here needs no submodule scan.
+# The per-file counts are blanked: the working tree scan behind them exceeds command_timeout in large repos.
+# The stash, conflict and remote state left here needs no working tree or submodule scan.
 [git_status]
 ignore_submodules = true
 format = '($all_status$ahead_behind)'
