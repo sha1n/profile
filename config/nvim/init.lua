@@ -175,12 +175,15 @@ vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iag
 
 -- Treesitter Config
 -- :ProfileSync installs these; nothing compiles at startup.
-local parsers = { "c", "cpp", "go", "lua", "python", "rust", "tsx", "typescript", "vimdoc", "vim" }
+local parsers = { "bash", "c", "cpp", "go", "lua", "python", "rust", "tsx", "typescript", "vimdoc", "vim" }
 
 vim.api.nvim_create_autocmd('FileType', {
-  callback = function()
-    -- Fails for filetypes without an installed parser; those keep regex highlighting.
-    if pcall(vim.treesitter.start) then
+  callback = function(args)
+    -- vim.treesitter.start turns off regex highlighting even when no highlights query exists,
+    -- as with a parser left behind by the old nvim-treesitter master layout. Those keep regex highlighting.
+    local lang = vim.treesitter.language.get_lang(args.match)
+    local ok, highlights = pcall(vim.treesitter.query.get, lang or '', 'highlights')
+    if ok and highlights and pcall(vim.treesitter.start, args.buf, lang) then
       vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
     end
   end,
