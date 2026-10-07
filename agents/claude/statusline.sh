@@ -9,8 +9,9 @@ base01=$'\e[38;2;88;110;117m'
 base0=$'\e[38;2;131;148;150m'
 green=$'\e[38;2;133;153;0m'
 yellow=$'\e[38;2;181;137;0m'
+orange=$'\e[38;2;203;75;22m'
 red=$'\e[38;2;220;50;47m'
-# Green, yellow and red are left out so a model never shares a color with the context bar.
+# Green, yellow, orange and red are left out so a model never shares a color with the context bar.
 model_palette=(
   $'\e[38;2;38;139;210m'
   $'\e[38;2;42;161;152m'
@@ -26,8 +27,10 @@ model_color() {
 }
 
 context_color() {
-  if (($1 >= 70)); then
+  if (($1 >= 50)); then
     printf '%s' "$red"
+  elif (($1 >= 30)); then
+    printf '%s' "$orange"
   elif (($1 >= 20)); then
     printf '%s' "$yellow"
   else

@@ -26,6 +26,27 @@ function test_wrapper_renders_statusline() {
   assert_contains "$output" "Test Model"
 }
 
+function test_context_color_bands() {
+  test_case_title
+  reset_home
+
+  local green=$'\e[38;2;133;153;0m' yellow=$'\e[38;2;181;137;0m'
+  local orange=$'\e[38;2;203;75;22m' red=$'\e[38;2;220;50;47m'
+  local -A expected=(
+    0 "$green" 19 "$green"
+    20 "$yellow" 29 "$yellow"
+    30 "$orange" 49 "$orange"
+    50 "$red" 100 "$red"
+  )
+
+  local pct output
+  for pct in ${(k)expected}; do
+    output="$(print -r -- "{\"model\":{\"display_name\":\"M\"},\"context_window\":{\"used_percentage\":$pct}}" |
+      env -i HOME="$HOME" PATH="$child_path" TERM=dumb "$profile_home/agents/claude/statusline.sh")"
+    assert_contains "$output" "${expected[$pct]}${pct}%"
+  done
+}
+
 function test_wrapper_forwards_payload_to_orca() {
   test_case_title
   reset_home
@@ -101,6 +122,7 @@ printf "%s\n" "$@" >"$HOME/claude_args"' >"$stub_dir/claude"
 
 setup
 run_test test_wrapper_renders_statusline
+run_test test_context_color_bands
 run_test test_wrapper_forwards_payload_to_orca
 run_test test_wrapper_skips_non_executable_orca_script
 run_test test_claude_function_injects_statusline_settings
