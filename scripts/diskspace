@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Enforce strict error handling
+set -euo pipefail
+
+# Default values
+TARGET_PATH=""
+MAX_DEPTH=1
+LIMIT=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --depth)
+            MAX_DEPTH="$2"
+            shift 2
+            ;;
+        --limit)
+            LIMIT="$2"
+            shift 2
+            ;;
+        -*)
+            echo "Error: Unknown option '$1'"
+            echo "Usage: $(basename "$0") [--depth <int>] [--limit <int>] <path>"
+            exit 1
+            ;;
+        *)
+            if [[ -n "$TARGET_PATH" ]]; then
+                echo "Error: Multiple target paths provided."
+                echo "Usage: $(basename "$0") [--depth <int>] [--limit <int>] <path>"
+                exit 1
+            fi
+            TARGET_PATH="$1"
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "$TARGET_PATH" ]]; then
+    echo "Usage: $(basename "$0") [--depth <int>] [--limit <int>] <path>"
+    exit 1
+fi
+
+# Validate input
+if [[ ! -d "$TARGET_PATH" ]]; then
+    echo "Error: Target path '$TARGET_PATH' does not exist or is not a directory."
+    exit 1
+fi
+
+if ! [[ "$MAX_DEPTH" =~ ^[0-9]+$ ]]; then
+    echo "Error: --depth must be a non-negative integer."
+    exit 1
+fi
+
+if [[ -n "$LIMIT" ]] && ! [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: --limit must be a positive integer."
+    exit 1
+fi
+
+if [[ -n "$LIMIT" ]]; then
+    echo "Analyzing disk usage for '$TARGET_PATH' up to depth $MAX_DEPTH (limit $LIMIT)..."
+    du -h -d "$MAX_DEPTH" "$TARGET_PATH" 2>/dev/null | sort -hr | head -n "$LIMIT"
+else
+    echo "Analyzing disk usage for '$TARGET_PATH' up to depth $MAX_DEPTH..."
+    du -h -d "$MAX_DEPTH" "$TARGET_PATH" 2>/dev/null | sort -hr
+fi
