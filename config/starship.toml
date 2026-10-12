@@ -2,6 +2,7 @@
 
 # Each git module after the branch starts with its own space, so the group ends with one space only in a repo.
 format = """
+${custom.disk}\
 $username$hostname$directory\
 ($git_branch$git_commit$git_state$git_metrics$git_status )\
 $all"""
@@ -13,6 +14,13 @@ branch = '#b8c084'
 muted = '#8b98a0'
 added = '#8fa83c'
 deleted = '#d9473f'
+
+[custom.disk]
+command = "disk_free"
+when = true
+shell = ["sh"]
+style = 'fg:muted'
+format = '[⛁ $output |]($style) '
 
 [aws]
 disabled = true

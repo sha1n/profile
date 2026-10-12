@@ -1,0 +1,3 @@
+#!/bin/sh
+# -P keeps each row on one line when a long device name would wrap it (GNU df), so awk always finds row 2.
+df -Ph / | awk 'NR==2 {print $4}'

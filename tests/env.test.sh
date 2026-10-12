@@ -6,6 +6,7 @@ load_script="$profile_home/load.zsh"
 zsh_bin="$(command -v zsh)"
 # Excludes Homebrew and other user prefixes so the real mise/fzf cannot be found.
 system_path="/usr/bin:/bin"
+starship_bin="${commands[starship]}"
 
 # Each case loads the profile in a fresh child shell so stubs and PATH changes
 # cannot leak between cases or into the test runner. -f keeps the child from
@@ -201,6 +202,17 @@ function test_no_theme_functions() {
   assert_not_contains "$kinds" ": function"
 }
 
+function test_starship_disk_module() {
+  test_case_title
+
+  local output
+  output="$(env -i HOME="$HOME" PATH="$profile_home/scripts:$system_path" \
+    STARSHIP_CONFIG="$profile_home/config/starship.toml" TERM=xterm-256color \
+    "$starship_bin" module custom.disk 2>&1)"
+
+  assert_contains "$output" "⛁"
+}
+
 setup
 run_test test_pip_require_virtualenv
 run_test test_homebrew_bundle_file
@@ -214,5 +226,10 @@ run_test test_starship_init_sets_prompt
 run_test test_starship_skipped_on_dumb_terminal
 run_test test_starship_init_failure_is_silent
 run_test test_no_theme_functions
+if [[ -z "$starship_bin" ]]; then
+  echo "# starship is not on PATH; skipping the custom.disk module case"
+else
+  run_test test_starship_disk_module
+fi
 cleanup
 finish_tests
