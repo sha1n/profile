@@ -47,6 +47,92 @@ function test_context_color_bands() {
   done
 }
 
+function test_context_segment_has_bar() {
+  test_case_title
+  reset_home
+
+  local output
+  output="$(run_wrapper)"
+  assert_contains "$output" "CTX "
+  assert_contains "$output" "████"
+  assert_contains "$output" "░░░░░░"
+  assert_not_contains "$output" "CW "
+}
+
+# statusline.sh finds disk_free relative to its own path, so a copy in a temporary
+# tree runs against a stub instead of the real disk.
+build_statusline_tree() {
+  mkdir -p "$HOME/tree/agents/claude" "$HOME/tree/scripts"
+  cp "$profile_home/agents/claude/statusline.sh" "$HOME/tree/agents/claude/statusline.sh"
+}
+
+write_disk_free_stub() {
+  print -r -- "#!/bin/sh
+$1" >"$HOME/tree/scripts/disk_free"
+  chmod +x "$HOME/tree/scripts/disk_free"
+}
+
+run_tree_statusline() {
+  print -r -- "$payload" | env -i HOME="$HOME" PATH="$child_path" TERM=dumb "$HOME/tree/agents/claude/statusline.sh"
+}
+
+assert_no_disk_segment() {
+  local output="$1" stripped
+  assert_contains "$output" "Test Model"
+  assert_not_contains "$output" "⛁"
+  stripped="$(print -r -- "$output" | sed $'s/\e\\[[0-9;]*m//g; s/[[:space:]]*$//')"
+  assert_not_equal "${stripped[-1]}" "|"
+}
+
+function test_disk_color_bands() {
+  test_case_title
+  reset_home
+
+  local light_orange=$'\e[38;2;255;175;95m' red=$'\e[38;2;220;50;47m'
+  local -A expected=(
+    100Gi "$light_orange" 100G "$light_orange" 100.0G "$light_orange" 99Gi "$light_orange"
+    51Gi "$light_orange" 50.5G "$light_orange"
+    50Gi "$red" 50G "$red" 50.0G "$red" 49.9Gi "$red" 49Gi "$red" 900Mi "$red" 0B "$red"
+  )
+
+  build_statusline_tree
+  local value output
+  for value in ${(k)expected}; do
+    write_disk_free_stub "echo $value"
+    output="$(run_tree_statusline)"
+    assert_contains "$output" "${expected[$value]}⛁ ${value}"
+  done
+}
+
+function test_disk_segment_hidden_above_100_gib() {
+  test_case_title
+  reset_home
+
+  build_statusline_tree
+  local value
+  for value in 100.5G 101Gi 156Gi 1.5Ti 2T 1,5T 3P; do
+    write_disk_free_stub "echo $value"
+    assert_no_disk_segment "$(run_tree_statusline)"
+  done
+}
+
+function test_disk_segment_omitted_when_disk_free_prints_nothing() {
+  test_case_title
+  reset_home
+
+  build_statusline_tree
+  write_disk_free_stub ":"
+  assert_no_disk_segment "$(run_tree_statusline)"
+}
+
+function test_disk_segment_omitted_when_disk_free_is_missing() {
+  test_case_title
+  reset_home
+
+  build_statusline_tree
+  assert_no_disk_segment "$(run_tree_statusline)"
+}
+
 function test_wrapper_forwards_payload_to_orca() {
   test_case_title
   reset_home
@@ -123,6 +209,11 @@ printf "%s\n" "$@" >"$HOME/claude_args"' >"$stub_dir/claude"
 setup
 run_test test_wrapper_renders_statusline
 run_test test_context_color_bands
+run_test test_context_segment_has_bar
+run_test test_disk_color_bands
+run_test test_disk_segment_hidden_above_100_gib
+run_test test_disk_segment_omitted_when_disk_free_prints_nothing
+run_test test_disk_segment_omitted_when_disk_free_is_missing
 run_test test_wrapper_forwards_payload_to_orca
 run_test test_wrapper_skips_non_executable_orca_script
 run_test test_claude_function_injects_statusline_settings

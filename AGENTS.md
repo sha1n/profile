@@ -113,7 +113,7 @@ Language servers and formatters for nvim come from the Brewfile; no Mason. The `
 No global Python libraries: `PIP_REQUIRE_VIRTUALENV=true` is exported, Python comes from mise, and Python CLI tools install as uv tools (`uv "<tool>"` in the Brewfile, or `uv tool install <tool>` by hand; `uv tool` replaces `pipx`). The `uv` formula is in `essentials`, which `dev` includes. Add no `python@*`, `pipx` or Homebrew Python library formulae.
 
 ### Scripts as CLI Commands
-Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` and `n` (yarn/npm wrappers), `docker_cleanup`, `git_config_hook`, `zsh_bench` (startup benchmarking), `disk_free` (prints the free space of `/`; the Starship `custom.disk` module calls it), `profile` (`update` the repo, `install` or `cleanup` the tools of the machine profiles). New scripts placed here are automatically available as commands.
+Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` and `n` (yarn/npm wrappers), `docker_cleanup`, `git_config_hook`, `zsh_bench` (startup benchmarking), `disk_free` (prints the free space of `/`; the Starship `custom.disk` module and the Claude status line call it), `profile` (`update` the repo, `install` or `cleanup` the tools of the machine profiles). New scripts placed here are automatically available as commands.
 
 ### Performance
 - **Startup time**: Optimized via `compinit` caching, `.zwc` bytecode compilation, and `zsh-defer` plugin deferral. Use `zsh_bench` to measure impact of changes.
