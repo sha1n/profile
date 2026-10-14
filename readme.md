@@ -64,13 +64,13 @@ curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh |
 
 | Profile | Contents |
 |---|---|
-| `essentials` | CLI core, editors, git tools, terminal, personal apps, `visual-studio-code`, and `uv` for Python CLI tools |
-| `dev` | Development tools and apps, and mise with the Go, Python, Node.js, Java and Maven runtimes. Includes `essentials` |
-| `workstation` | Docker Desktop, for machines that do significant development work. Includes `dev` |
+| `essentials` | Core CLI tools, stock Neovim, Sublime Text, Git and gh, Brave, Claude and Codex |
+| `dev` | mise and its Go, Python, Node.js, Java and Maven runtimes, uv, build tools, cmux, agent CLI tools and the Neovim toolchain. Includes `essentials` |
+| `workstation` | Docker Desktop, LLVM, GoReleaser, VS Code, Orca, and Git maintenance and signing tools (`git-lfs`, `git-filter-repo`, `gnupg`). Includes `dev` |
 
 The profiles form one chain: `essentials` < `dev` < `workstation`. Each profile includes every profile before it. Slack and Zoom are not in any profile: install them by hand on the machines that need them.
 
-mise owns the language runtimes. Their versions are in [config/mise/profile.toml](config/mise/profile.toml), which `install.sh` links to `~/.config/mise/conf.d/profile.toml`. Homebrew installs no runtime. Python CLI tools install as uv tools (`uv "<tool>"` in the Brewfile, or `uv tool install <tool>`), not with `pipx` or a Homebrew formula. The shell exports `PIP_REQUIRE_VIRTUALENV=true`, so `pip install` works only inside a virtualenv.
+mise owns the language runtimes. Their versions are in [config/mise/profile.toml](config/mise/profile.toml), which `install.sh` links to `~/.config/mise/conf.d/profile.toml`. Homebrew installs no runtime. The `uv` formula starts at `dev`; Python CLI tools install as uv tools (`uv "<tool>"` in the Brewfile, or `uv tool install <tool>`), not with `pipx` or a Homebrew formula. The shell exports `PIP_REQUIRE_VIRTUALENV=true`, so `pip install` works only inside a virtualenv.
 
 The shell exports `HOMEBREW_BUNDLE_FILE` with the path of [brew/Brewfile](brew/Brewfile), so `brew bundle`, `brew bundle check` and `brew bundle list` read it from any directory. A plain `brew bundle` applies every profile. To install one profile, run `profile install <profile>`, or set `HOMEBREW_PROFILE_INSTALL_PROFILES` for one command, for example `HOMEBREW_PROFILE_INSTALL_PROFILES=dev brew bundle check`. A `--file` argument wins over the variable.
 
@@ -105,6 +105,8 @@ profile cleanup                  # list what no profile needs, ask, then remove 
 
 `profile install` stores no selection: each run applies only the profiles that you name. A profile always includes the profiles before it in the chain. After `brew bundle`, `dev` and `workstation` run `:ProfileSync` in a headless nvim and then `mise install`; `essentials` stops after `brew bundle`. It never removes packages.
 
+Changes to profile membership govern future `profile install` runs. Packages already installed stay in place. `profile cleanup` compares against every profile, so moving a package to a higher tier does not cause cleanup to remove it from a machine using a lower tier.
+
 `profile cleanup` has a Homebrew section and a mise section. Each section lists what it would remove, asks its own `[y/N]` question, and removes that list only if you answer `y`. You can remove one list and keep the other.
 - The Homebrew section lists the formulae, casks and taps that no profile lists and asks, for example, `Remove these 6 Homebrew packages? [y/N]`. It always compares against every profile, so it never removes a package of a profile. Before it asks, it checks each candidate against the entries of every profile, also by its old names and aliases, and prints a warning such as `kept docker: a profile lists it` for each candidate that it drops from the list. If it cannot read the names of a candidate, it keeps that candidate too. On `y` it removes the list itself with `brew uninstall` and `brew untap`. It removes every installed version of a formula, and it turns Homebrew autoremove off, so a dependency that a profile lists stays. A dependency that no profile lists shows up in the next cleanup. It never touches uv tools, VS Code extensions or the other `brew bundle` extension types. The list also shows packages that you installed by hand and never added to the Brewfile, for example Slack or Zoom from Homebrew, so read it before you answer. A plain `brew bundle` command with no `HOMEBREW_PROFILE_INSTALL_PROFILES` also applies every profile.
 - The mise section lists the runtime versions that no config uses, one `tool@version` per line, from `mise ls --prunable --json`. This needs `jq`, which is in `essentials`. Then it asks before it runs `mise prune`. If mise cannot list the versions, for example because of a config error, `profile cleanup` asks nothing and exits with 1.
@@ -112,6 +114,12 @@ profile cleanup                  # list what no profile needs, ask, then remove 
 `profile` exits with 0 on success, 1 when a step failed, and 2 on a usage error. `profile update` does not run `install.sh`. Run `install.sh` again after an update that adds a link.
 
 Both `profile install` and `profile cleanup` skip their Homebrew section when `brew` is not on `PATH`, and their mise section when `mise` is not on `PATH`. `profile install` skips the nvim plugin sync when `nvim` is not on `PATH`.
+
+## Git LFS in a repository
+
+Homebrew installs the `git-lfs` executable with the `workstation` profile. Git LFS filters are configured per repository. In each repository that tracks files with LFS, inspect its `core.hooksPath` and existing `pre-push` hook, then run `git lfs install --local` from that repository and verify the local filters with `git config --local --get-regexp '^filter\.lfs\.'`. Integrate the LFS pre-push hook with any custom hook setup. Existing repositories with local LFS filters continue to work.
+
+The linked `~/.gitconfig` changes as soon as [dotfiles/.gitconfig](dotfiles/.gitconfig) changes. Its former global LFS filter settings are gone even when `git-lfs` remains installed. Migrate any repository that relied on those settings before updating the linked configuration.
 
 ## Neovim
 The nvim config is [config/nvim](config/nvim), which `install.sh` links as a directory to `~/.config/nvim`. The plugin versions are pinned in the committed [config/nvim/lazy-lock.json](config/nvim/lazy-lock.json).

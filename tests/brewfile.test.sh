@@ -5,7 +5,7 @@ brewfile="$profile_home/brew/Brewfile"
 brew_bin="$(command -v brew)"
 entry_keywords='brew|cask|uv|mas|vscode|whalebrew|go|cargo|npm|flatpak|krew'
 # Work-only apps are installed by hand; the runtimes come from mise, not Homebrew.
-never_listed='slack zoom go nvm node maven pipx'
+never_listed='slack zoom go nvm node maven pipx vim'
 process_or_file_load='`|%x|\b(IO\.|File\.|Open3|Kernel\.|Process\.|system|exec|spawn|fork|popen|require|require_relative|load|eval|instance_eval|class_eval|zsh|bash)\b'
 
 # `brew bundle list` only evaluates the Brewfile and prints entry names: it does
@@ -98,20 +98,22 @@ function test_profile_chain() {
 }
 
 # Each profile applies the profiles before it in the chain. Work-only apps and the
-# language runtimes (mise owns them) are listed by no profile. The editors (neovim, vim)
-# are essentials; the nvim toolchain (tree-sitter-cli, language servers, formatters)
-# belongs to dev, whose profile install runs the nvim plugin sync.
+# language runtimes (mise owns them) are listed by no profile. Neovim is in
+# essentials; its toolchain belongs to dev, whose profile install runs plugin sync.
 function test_profile_selection() {
   test_case_title
 
+  local essentials='starship coreutils gnu-time rsync watch wget tree bat sha1n/tap/bert fzf jq ripgrep yq poppler neovim git gh sublime-text brave-browser claude codex'
+  local dev='mise uv make go-task shellcheck openspec gopls basedpyright typescript lua-language-server stylua tree-sitter-cli antigravity-cli cmux acdc-mcp repulse'
+  local workstation='llvm goreleaser git-lfs git-filter-repo gnupg docker-desktop visual-studio-code orca'
   local row value expected_rc present absent output exit_code entry
   # <HOMEBREW_PROFILE_INSTALL_PROFILES, or <unset>>|<exit code>|<present entries or text>|<absent entries>
-  for row in '<unset>|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
-    '|0|bat mise docker-desktop uv visual-studio-code sha1n/tap|' \
-    'essentials|0|bat uv visual-studio-code sha1n/tap neovim vim|mise docker-desktop goreleaser shellcheck gopls basedpyright typescript tree-sitter-cli lua-language-server stylua' \
-    'dev|0|mise uv goreleaser shellcheck tree-sitter-cli lua-language-server stylua gopls basedpyright typescript neovim vim|docker-desktop' \
-    'workstation|0|docker-desktop mise uv visual-studio-code|' \
-    'essentials workstation|0|docker-desktop mise uv visual-studio-code|' \
+  for row in "<unset>|0|$essentials $dev $workstation|" \
+    "|0|$essentials $dev $workstation|" \
+    "essentials|0|$essentials|$dev $workstation" \
+    "dev|0|$essentials $dev|$workstation" \
+    "workstation|0|$essentials $dev $workstation|" \
+    "essentials workstation|0|$essentials $dev $workstation|" \
     'dev bogus|1|bogus|'; do
     IFS='|' read -r value expected_rc present absent <<<"$row"
     if [[ "$value" == "<unset>" ]]; then
@@ -130,6 +132,8 @@ function test_profile_selection() {
       for entry in ${=absent} ${=never_listed}; do
         assert_lacks_entry "$output" "$entry"
       done
+      assert_equal "$(print -rl -- ${=present} sha1n/tap | LC_ALL=C sort)" \
+        "$(print -r -- "$output" | LC_ALL=C sort)"
       assert_empty "$(print -r -- "$output" | sort | uniq -d)"
       assert_empty "$(print -r -- "$output" | grep -E '^(python|openjdk)@' || true)"
     else
