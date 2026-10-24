@@ -8,7 +8,7 @@
 # so dev applies essentials, and workstation applies dev and essentials.
 # scripts/profile reads the `known` line and applies the same rule.
 
-known = %w[essentials dev workstation]
+known = %w[essentials dev dev.home audio workstation]
 profiles = ENV.fetch("HOMEBREW_PROFILE_INSTALL_PROFILES", "").split
 unknown = profiles - known
 raise "unknown machine profile: #{unknown.join(", ")}" unless unknown.empty?
@@ -20,10 +20,12 @@ tap "sha1n/tap", trusted: true
 if profiles.include?("essentials")
   # Prompt
   brew "starship"
-
+  cask "font-jetbrains-mono-nerd-font"
+  
   # Core utilities
   brew "coreutils"
   brew "gnu-time"
+  brew "parallel"
   brew "rsync"
   brew "watch"
   brew "wget"
@@ -34,8 +36,8 @@ if profiles.include?("essentials")
   # Search and text processing
   brew "fzf"
   brew "jq"
-  brew "ripgrep"
   brew "yq"
+  brew "ripgrep"
   brew "poppler"
 
   # Editors. essentials runs nvim stock; the nvim toolchain lives in dev.
@@ -46,9 +48,6 @@ if profiles.include?("essentials")
   brew "git"
   brew "gh"
 
-  cask "brave-browser"
-  cask "claude"
-  cask "codex"
 end
 
 if profiles.include?("dev")
@@ -65,7 +64,6 @@ if profiles.include?("dev")
   # AI and agents
   brew "openspec"
   cask "antigravity-cli"
-  cask "cmux"
   cask "sha1n/tap/acdc-mcp", trusted: true
   cask "sha1n/tap/repulse", trusted: true
 
@@ -84,7 +82,7 @@ if profiles.include?("dev")
   brew "tree-sitter-cli"
 end
 
-if profiles.include?("workstation")
+if profiles.include?("dev.home")
   brew "llvm"
   # Go itself comes from mise (config/mise/profile.toml)
   brew "goreleaser"
@@ -92,8 +90,16 @@ if profiles.include?("workstation")
   brew "git-filter-repo"
   brew "gnupg"
 
+  brew "openspec"
+
+  cask "warp"
   cask "docker-desktop"
-  # No `vscode` entries: VS Code Settings Sync owns the extensions.
   cask "visual-studio-code"
   cask "stablyai/orca/orca", trusted: true
 end
+
+if profiles.include?("audio")
+  cask "blackhole-2ch"
+  cask "au-lab"
+end
+
