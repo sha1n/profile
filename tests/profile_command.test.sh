@@ -402,6 +402,7 @@ function test_usage() {
   test_case_title
 
   local row args expected_rc stream usage
+  local -a usage_lines
   # <arguments>|<exit code>|<stream that holds the usage>
   for row in '|0|out' 'help|0|out' '-h|0|out' '--help|0|out' \
     'sync|2|err' '--bogus|2|err' 'update dev|2|err' 'install --yes dev|2|err' \
@@ -417,6 +418,9 @@ function test_usage() {
     assert_contains "$usage" "update"
     assert_contains "$usage" "install"
     assert_contains "$usage" "cleanup"
+    # A whole usage line, because the cleanup text "no profile lists" holds the words too.
+    usage_lines=("${(@f)usage}")
+    assert_not_empty "${(j:,:)${(@M)usage_lines:#* profile list}}"
     assert_empty "$calls"
   done
 }
@@ -635,6 +639,40 @@ function test_install_reads_profiles_from_file_names() {
     else
       assert_contains "$err" "$word"
     fi
+  done
+}
+
+# `profile list` prints a line per profile from the file names under brew/: the tiers in
+# chain order (10 after 3), then the add-ons in name order, and runs no step. No addons/
+# means only tiers; no tier file, or any argument, fails with nothing on stdout.
+function test_list() {
+  test_case_title
+
+  local row change args expected_rc expected word nl=$'\n'
+  # <change to brew/>|<arguments after list>|<exit code>|<stdout, with ; between lines>|<text that stderr holds>
+  for row in '||0|tier essentials;tier dev;tier dev.home;addon audio|' \
+    'extra||0|tier essentials;tier dev;tier dev.home;tier extra;addon audio;addon bass|' \
+    'no-addons||0|tier essentials;tier dev;tier dev.home|' \
+    'no-tiers||1||brew/tiers' 'empty-tiers||1||brew/tiers' \
+    '|dev|2||profile list' '|--all|2||profile list' '|-h|2||profile list'; do
+    IFS='|' read -r change args expected_rc expected word <<<"$row"
+    prepare_case
+    case "$change" in
+      extra)
+        print -r -- 'brew "extra-formula"' >"$fake_repo/brew/tiers/10-extra.Brewfile"
+        print -r -- 'cask "bass-cask"' >"$fake_repo/brew/addons/bass.Brewfile" ;;
+      no-addons) rm -rf "$fake_repo/brew/addons" ;;
+      no-tiers) rm -rf "$fake_repo/brew/tiers" ;;
+      empty-tiers) rm -f "$fake_repo/brew/tiers"/* ;;
+    esac
+    run_profile "$HOME" list ${=args}
+    collect_and_reset
+
+    print -r -- "row: $change, profile list $args"
+    assert_equal "$rc" "$expected_rc"
+    assert_equal "$out" "${expected//;/$nl}"
+    [[ -n "$word" ]] && assert_contains "$err" "$word"
+    assert_empty "$calls"
   done
 }
 
@@ -1106,6 +1144,7 @@ run_test test_install_finds_mise_from_brew_bundle
 run_test test_install_syncs_nvim_plugins
 run_test test_install_missing_tools
 run_test test_install_reads_profiles_from_file_names
+run_test test_list
 run_test test_cleanup_dry_runs
 run_test test_cleanup_answers
 run_test test_cleanup_failures
