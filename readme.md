@@ -102,7 +102,23 @@ profile install dev.home         # install the packages of dev.home, dev and ess
 profile install dev audio        # install the packages of dev and essentials and of the audio add-on, sync the nvim plugins, then the mise runtimes
 profile install audio            # install the packages of the audio add-on only
 profile cleanup                  # list what no profile needs, ask, then remove it
+profile list                     # print the profiles: tiers in chain order, then add-ons
+profile list --names             # print only the profile names, one per line
 ```
+
+`profile list` prints the profiles from the file names under `brew/`, a section per kind:
+
+```text
+Tiers (each one includes the ones above it):
+  essentials
+  dev
+  dev.home
+
+Add-ons (each one installs only itself):
+  audio
+```
+
+`profile list --names` prints the same names, one per line, without headers. `profile install <TAB>` completes the profile names from `profile list --names`.
 
 `profile update` removes a submodule that the repo no longer lists: its working tree, its directory under `.git/modules/`, and its section in `.git/config`. It asks no question. It keeps the submodule and prints a warning if the submodule has uncommitted changes, untracked files, a stash, or commits that no remote-tracking ref contains.
 

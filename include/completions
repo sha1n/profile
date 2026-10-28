@@ -14,5 +14,31 @@ else
 fi
 autoload -U +X bashcompinit && bashcompinit
 
+# The names come from `profile list --names` at completion time, never at startup.
+function _profile() {
+  local -a subcommands=(
+    'update:pull the repo and update its submodules'
+    'install:install the tools of machine profiles'
+    'cleanup:remove the tools that no profile lists'
+    'list:print the machine profiles'
+  )
+  local output expl
+  local -a names used
+
+  if (( CURRENT == 2 )); then
+    _describe 'subcommand' subcommands
+    return
+  fi
+  [[ "${words[2]}" == install ]] || return 1
+  (( $+commands[profile] )) || return 1
+  # Any output here would land on the command line being edited.
+  output="$(profile list --names 2>/dev/null)" || return 1
+  names=(${(f)output})
+  used=("${(@)words[3,CURRENT-1]}")
+  names=(${names:|used})
+  (( ${#names} )) && _wanted profiles expl 'machine profile' compadd -a names
+}
+compdef _profile profile
+
 zstyle ':fzf-tab:*' switch-group ',' '.'
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls -1 --color=always $realpath'

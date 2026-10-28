@@ -45,6 +45,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 profile update            # Pull the current branch, update submodules, remove submodules no longer in .gitmodules (keeps any with local work)
 profile install [profile...]    # brew bundle for the given tier and the ones before it in the chain, plus each given add-on alone (default: essentials), then, only when the tiers reach dev, :ProfileSync in headless nvim and mise install
 profile cleanup           # List the formulae, casks and taps no profile lists and unused mise versions, ask [y/N], then remove
+profile list [--names]    # Print the tiers in chain order, then the add-ons, in two sections; --names prints only the names, one per line; runs nothing
 make test                 # Run tests (also: ./tests/run_tests.sh)
 make update_submodules    # Update all git submodules
 make compile              # Compile zsh files to .zwc bytecode
@@ -125,6 +126,7 @@ Files in `scripts/` are on `$PATH` and act as standalone commands. Notable: `y` 
 ### Performance
 - **Startup time**: Optimized via `compinit` caching, `.zwc` bytecode compilation, and `zsh-defer` plugin deferral. Use `zsh_bench` to measure impact of changes.
 - **compinit caching** (`include/completions`): The `.zcompdump` file is only regenerated when stale (>24h) or missing. `compinit -C` is used otherwise.
+- **`_profile` completion** (`include/completions`): completes the `profile` subcommands, and after `install` the names from `profile list --names`. It runs `profile` only at completion time, never at startup.
 - **`.zwc` bytecode**: Zsh auto-prefers `file.zwc` over `file` when sourcing (if `.zwc` is newer). Stale `.zwc` files are harmless — zsh falls back to the source. `reload!` and `install.sh` recompile automatically. Some files (aliases, exports, functions) fail `zcompile` silently — this is expected.
 - **`zsh-defer`**: Only used in interactive sessions. Keybindings that depend on deferred plugins must also be deferred — see `load.zsh` for the pattern.
 

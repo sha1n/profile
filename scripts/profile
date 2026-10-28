@@ -5,6 +5,7 @@
 # Usage: profile update
 #        profile install [profile...]
 #        profile cleanup
+#        profile list [--names]
 #   update      Pull the current branch of the repo, update its submodules, and remove
 #               the submodules that the repo no longer lists
 #   install     Install the Homebrew packages of the given profiles (default: essentials),
@@ -15,6 +16,8 @@
 #               it. An add-on stands outside the chain: it installs only itself
 #   cleanup     List the Homebrew packages and mise runtimes that no profile lists,
 #               and remove them after a confirmation
+#   list        Print the tiers in chain order, then the add-ons, each kind in its own section;
+#               with --names, print only the names, one per line
 #   -h, --help  Show this help and exit
 #
 # Exit codes: 0 success, 1 a step failed, 2 usage error.
@@ -28,6 +31,7 @@ function __profile_cmd_usage() {
   print -r -- "usage: profile update
        profile install [profile...]
        profile cleanup
+       profile list [--names]
 
   update      pull the current branch of the repo, update its submodules, and remove
               the submodules that the repo no longer lists
@@ -39,6 +43,8 @@ function __profile_cmd_usage() {
               it. An add-on stands outside the chain: it installs only itself
   cleanup     list the Homebrew packages and mise runtimes that no profile lists,
               and remove them after a confirmation
+  list        print the tiers in chain order, then the add-ons, each kind in its own section;
+              with --names, print only the names, one per line
   -h, --help  show this help and exit"
 }
 
@@ -276,6 +282,21 @@ function __profile_cmd_remove_orphans() {
   return failed
 }
 
+# Sets the caller's tiers and addons to the Brewfiles under brew/, tiers in chain order and
+# add-ons in name order, and tier_names and addon_names to their profile names. Fails with 1
+# when brew/tiers holds no Brewfile.
+function __profile_cmd_profile_files() {
+  emulate -L zsh
+  local brew="$__profile_repo/brew"
+  # The file names are the only list of profiles, so a second copy here could drift from them.
+  tiers=("$brew"/tiers/*.Brewfile(Nn)) addons=("$brew"/addons/*.Brewfile(N))
+  tier_names=(${${tiers:t:r}#<->-}) addon_names=(${addons:t:r})
+  if (( ! ${#tiers} )); then
+    __profile_log_error "no Brewfile in $brew/tiers"
+    return 1
+  fi
+}
+
 # Usage: __profile_cmd_brewfiles [profile...]
 # Sets reply to the Brewfiles of the given profiles: every tier up to the highest one
 # given, in chain order, then each add-on given, in name order. With no profile, every
@@ -283,17 +304,12 @@ function __profile_cmd_remove_orphans() {
 # for an unknown profile.
 function __profile_cmd_brewfiles() {
   emulate -L zsh
-  local brew="$__profile_repo/brew" name
-  # The file names are the only list of profiles, so a second copy here could drift from them.
-  local -a tiers=("$brew"/tiers/*.Brewfile(Nn)) addons=("$brew"/addons/*.Brewfile(N))
-  local -a tier_names=(${${tiers:t:r}#<->-}) addon_names=(${addons:t:r})
+  local name
+  local -a tiers=() addons=() tier_names=() addon_names=()
   local -i i last=0
   reply=()
 
-  if (( ! ${#tiers} )); then
-    __profile_log_error "no Brewfile in $brew/tiers"
-    return 1
-  fi
+  __profile_cmd_profile_files || return 1
   if (( ! $# )); then
     reply=("${tiers[@]}" "${addons[@]}")
     return 0
@@ -644,12 +660,38 @@ function __profile_cmd_cleanup() {
   fi
 }
 
+function __profile_cmd_list() {
+  emulate -L zsh
+  local -a tiers=() addons=() tier_names=() addon_names=()
+  local names_only=false
+
+  if [[ $# -eq 1 && "$1" == --names ]]; then
+    names_only=true
+  elif (( $# )); then
+    __profile_cmd_usage >&2
+    return 2
+  fi
+
+  __profile_cmd_profile_files || return 1
+  if $names_only; then
+    print -rl -- "${tier_names[@]}" "${addon_names[@]}"
+    return 0
+  fi
+  print -r -- "Tiers (each one includes the ones above it):"
+  print -rl -- "${(@)tier_names/#/  }"
+  (( ${#addon_names} )) || return 0
+  print
+  print -r -- "Add-ons (each one installs only itself):"
+  print -rl -- "${(@)addon_names/#/  }"
+}
+
 function __profile_cmd_main() {
   case "$1" in
     ""|help|-h|--help) __profile_cmd_usage; exit 0 ;;
     update) shift; __profile_cmd_update "$@"; exit $? ;;
     install) shift; __profile_cmd_install "$@"; exit $? ;;
     cleanup) shift; __profile_cmd_cleanup "$@"; exit $? ;;
+    list) shift; __profile_cmd_list "$@"; exit $? ;;
     *) __profile_cmd_usage >&2; exit 2 ;;
   esac
 }
