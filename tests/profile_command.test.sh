@@ -421,6 +421,9 @@ function test_usage() {
     # A whole usage line, because the cleanup text "no profile lists" holds the words too.
     usage_lines=("${(@f)usage}")
     assert_not_empty "${(j:,:)${(@M)usage_lines:#* profile list \[--names\]}}"
+    # The list headlines name only the kind, so the usage states how each kind combines.
+    assert_contains "$usage" "each one includes the ones above it"
+    assert_contains "$usage" "each one installs only itself"
     assert_empty "$calls"
   done
 }
@@ -683,23 +686,35 @@ function test_unreadable_profile_file() {
   done
 }
 
-# Prints what `profile list` prints for the tiers <tiers> and the add-ons <addons>, each a
-# space-separated list: a section per kind, the add-ons one only when there is an add-on.
-list_sections() {
-  local -a tiers=(${=1}) addons=(${=2})
-  print -r -- "Tiers (each one includes the ones above it):"
-  print -rl -- "${(@)tiers/#/  }"
-  (( ${#addons} )) || return 0
-  print
-  print -r -- "Add-ons (each one installs only itself):"
-  print -rl -- "${(@)addons/#/  }"
+# Prints the headline of the section <title>: the bytes of a `brew list` headline on a
+# terminal when <color> is true, else "==> <title>".
+headline() {
+  if [[ "$2" == true ]]; then
+    print -r -- $'\e[34m==>\e[0m \e[1m'"$1"$'\e[0m'
+  else
+    print -r -- "==> $1"
+  fi
 }
 
-# `profile list` prints the profiles from the file names under brew/ in sections, and
-# `profile list --names` prints only the names: the tiers in chain order (10 after 3), then
-# the add-ons in name order. Neither runs a step. No addons/ means no add-on section; no
-# tier file, or any other argument, fails with nothing on stdout. stdout is compared raw,
-# so a trailing blank line or a color code fails the case.
+# Prints what `profile list` prints for the tiers <tiers> and the add-ons <addons>, each a
+# space-separated list: a section per kind, the add-ons one only when there is an add-on.
+# The headlines are colored when <color> is true.
+list_sections() {
+  local -a tiers=(${=1}) addons=(${=2})
+  headline Tiers "${3:-false}"
+  print -rl -- "${tiers[@]}"
+  (( ${#addons} )) || return 0
+  print
+  headline Add-ons "${3:-false}"
+  print -rl -- "${addons[@]}"
+}
+
+# `profile list` prints the profiles from the file names under brew/ in sections under
+# `==> <kind>` headlines, and `profile list --names` prints only the names: the tiers in
+# chain order (10 after 3), then the add-ons in name order. Neither runs a step. No
+# addons/ means no add-on section; no tier file, or any other argument, fails with nothing
+# on stdout. stdout is compared raw, so a trailing blank line, an indent or a color code
+# fails the case: the child has a color TERM, but its stdout is a file, not a terminal.
 function test_list() {
   test_case_title
 
@@ -710,13 +725,13 @@ function test_list() {
   raw_out="$(cat "$stub_dir/out"; print -rn -- .)"
   collect_and_reset
   assert_equal "$rc" "0"
-  assert_equal "${raw_out%.}" "Tiers (each one includes the ones above it):
-  essentials
-  dev
-  dev.home
+  assert_equal "${raw_out%.}" "==> Tiers
+essentials
+dev
+dev.home
 
-Add-ons (each one installs only itself):
-  audio
+==> Add-ons
+audio
 "
 
   # <change to brew/>|<arguments after list>|<exit code>|<tiers>|<add-ons>|<text that stderr holds>
@@ -755,6 +770,70 @@ Add-ons (each one installs only itself):
     assert_equal "$rc" "$expected_rc"
     assert_equal "${raw_out%.}" "$expected"
     [[ -n "$word" ]] && assert_contains "$err" "$word"
+    assert_empty "$calls"
+  done
+}
+
+# Runs `profile <arguments>` from HOME like run_profile, but with stdout on a
+# pseudo-terminal: pty_out holds the bytes it printed, and collect_and_reset reads the rest.
+# <no_color> is the value of NO_COLOR, or <unset>. zsh/zpty ships with zsh on macOS and
+# Linux alike, where `script` takes different arguments. The reads poll up to a deadline,
+# because a blocking read waits forever once the child is gone without the end marker;
+# -onlcr keeps the terminal from turning each newline into CR LF.
+run_profile_on_terminal() {
+  local no_color="$1"
+  shift
+  local -a child=(env -i HOME="$HOME" PATH="$stub_bin:$system_path" TERM="$section_term"
+    SHA1N_PROFILE_HOME="$HOME/missing")
+  [[ "$no_color" != "<unset>" ]] && child+=(NO_COLOR="$no_color")
+  child+=("$fake_repo/scripts/profile" "$@")
+  local marker="<end-of-profile>" chunk="" read_out="" printed=""
+  local -i deadline=$(( SECONDS + 30 ))
+  : >"$stub_dir/out" >"$stub_dir/err"
+  zmodload zsh/zpty zsh/zselect
+  zpty profile_tty "stty -onlcr; cd ${(q)HOME} && ${(j: :)${(@q)child}} </dev/null 2>>${(q)stub_dir}/err; print -rn -- \"\$?$marker\""
+  while [[ "$read_out" != *"$marker" ]] && (( SECONDS < deadline )); do
+    if zpty -rt profile_tty chunk; then
+      read_out+="$chunk"
+    else
+      zselect -t 5
+    fi
+  done
+  zpty -d profile_tty
+  printed="${read_out%$marker}"
+  local code="${printed##*[^0-9]}"
+  pty_out="${printed%$code}"
+  [[ "$read_out" == *"$marker" ]] || code="<no exit code within the deadline>"
+  print -r -- "$code" >"$stub_dir/rc"
+}
+
+# On a terminal, the headlines take the bytes of a `brew list` headline unless NO_COLOR
+# is set and not empty; the names and the blank line stay plain, and --names never
+# colors.
+function test_list_on_terminal() {
+  test_case_title
+
+  local row change no_color args color expected
+  # <change to brew/>|<NO_COLOR value, or <unset>>|<arguments after list>|<colored headlines>
+  for row in '|<unset>||true' '|||true' '|1||false' '|<unset>|--names|false' \
+    'no-addons|<unset>||true'; do
+    IFS='|' read -r change no_color args color <<<"$row"
+    prepare_case
+    [[ "$change" == no-addons ]] && rm -rf "$fake_repo/brew/addons"
+    run_profile_on_terminal "$no_color" list ${=args}
+    collect_and_reset
+
+    if [[ "$args" == --names ]]; then
+      expected="$(print -rl -- essentials dev dev.home audio)"$'\n'
+    elif [[ "$change" == no-addons ]]; then
+      expected="$(list_sections "essentials dev dev.home" "" "$color")"$'\n'
+    else
+      expected="$(list_sections "essentials dev dev.home" "audio" "$color")"$'\n'
+    fi
+    print -r -- "row: $change, NO_COLOR=$no_color, profile list $args"
+    assert_equal "$rc" "0"
+    assert_equal "$pty_out" "$expected"
+    assert_empty "$err"
     assert_empty "$calls"
   done
 }
@@ -1229,6 +1308,7 @@ run_test test_install_missing_tools
 run_test test_install_reads_profiles_from_file_names
 run_test test_unreadable_profile_file
 run_test test_list
+run_test test_list_on_terminal
 run_test test_cleanup_dry_runs
 run_test test_cleanup_answers
 run_test test_cleanup_failures
