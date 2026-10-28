@@ -63,16 +63,22 @@ _arguments() {
 }
 '
 
-# A profile command whose `profile list` prints <stdout> and exits with <code>. A failing
-# one also prints a line to stderr, as the real one does, so a completion that lets it
-# through shows output.
+# A profile command whose `profile list --names` prints <names>, one per line, and exits with
+# <code>. Any other call prints the section format of plain `profile list` and fails, so a
+# completion that calls plain `profile list` or parses its sections offers no name that the
+# cases expect. A failing one also prints a line to stderr, as the real one does, so a
+# completion that lets it through shows output.
 write_profile_stub() {
-  local output="$1" code="$2"
+  local names="$1" code="$2"
   mkdir -p "$stub_bin"
   {
     print -r -- "#!$zsh_bin -f"
-    print -r -- "[[ \"\$1\" == list ]] || exit 2"
-    print -r -- "print -rn -- ${(q)output}"
+    print -r -- "if [[ \$# -ne 2 || \"\$1\" != list || \"\$2\" != --names ]]; then"
+    print -r -- "  print -r -- 'Tiers (each one includes the ones above it):'"
+    print -r -- "  print -r -- '  wrong-call'"
+    print -r -- "  exit 2"
+    print -r -- "fi"
+    print -r -- "print -rn -- ${(q)names}"
     (( code )) && print -r -- "print -r -- 'stub profile stderr' >&2"
     print -r -- "exit $code"
   } >"$stub_bin/profile"
@@ -112,7 +118,7 @@ sorted() {
   (( $# )) && print -rl -- "${(@o)@}"
 }
 
-real_list=$'tier essentials\ntier dev\ntier dev.home\naddon audio\n'
+real_list=$'essentials\ndev\ndev.home\naudio\n'
 
 function test_registered_for_profile() {
   test_case_title
@@ -123,7 +129,7 @@ function test_registered_for_profile() {
   assert_equal "$registered" "_profile"
 }
 
-# The names after install come from `profile list` alone: the stub lists no profile
+# The names after install come from `profile list --names` alone: the stub lists no profile
 # that the repo holds under brew/ except these, so a completion that globs brew/ fails.
 function test_offered_names() {
   test_case_title
@@ -155,14 +161,14 @@ function test_offered_names() {
 function test_names_follow_profile_list() {
   test_case_title
   reset_home
-  write_profile_stub $'tier base\ntier extra\naddon music\n' 0
+  write_profile_stub $'base\nextra\nmusic\n' 0
   complete_words 3 profile install ""
 
   assert_equal "$(sorted ${(f)candidates})" "$(sorted base extra music)"
   assert_empty "$err"
 }
 
-# A failing `profile list`, or no profile command, offers nothing and prints nothing,
+# A failing `profile list --names`, or no profile command, offers nothing and prints nothing,
 # because any output would corrupt the command line being edited.
 function test_no_names_without_profile_list() {
   test_case_title

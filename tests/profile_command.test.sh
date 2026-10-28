@@ -420,7 +420,7 @@ function test_usage() {
     assert_contains "$usage" "cleanup"
     # A whole usage line, because the cleanup text "no profile lists" holds the words too.
     usage_lines=("${(@f)usage}")
-    assert_not_empty "${(j:,:)${(@M)usage_lines:#* profile list}}"
+    assert_not_empty "${(j:,:)${(@M)usage_lines:#* profile list \[--names\]}}"
     assert_empty "$calls"
   done
 }
@@ -642,20 +642,55 @@ function test_install_reads_profiles_from_file_names() {
   done
 }
 
-# `profile list` prints a line per profile from the file names under brew/: the tiers in
-# chain order (10 after 3), then the add-ons in name order, and runs no step. No addons/
-# means only tiers; no tier file, or any argument, fails with nothing on stdout.
+# Prints what `profile list` prints for the tiers <tiers> and the add-ons <addons>, each a
+# space-separated list: a section per kind, the add-ons one only when there is an add-on.
+list_sections() {
+  local -a tiers=(${=1}) addons=(${=2})
+  print -r -- "Tiers (each one includes the ones above it):"
+  print -rl -- "${(@)tiers/#/  }"
+  (( ${#addons} )) || return 0
+  print
+  print -r -- "Add-ons (each one installs only itself):"
+  print -rl -- "${(@)addons/#/  }"
+}
+
+# `profile list` prints the profiles from the file names under brew/ in sections, and
+# `profile list --names` prints only the names: the tiers in chain order (10 after 3), then
+# the add-ons in name order. Neither runs a step. No addons/ means no add-on section; no
+# tier file, or any other argument, fails with nothing on stdout. stdout is compared raw,
+# so a trailing blank line or a color code fails the case.
 function test_list() {
   test_case_title
 
-  local row change args expected_rc expected word nl=$'\n'
-  # <change to brew/>|<arguments after list>|<exit code>|<stdout, with ; between lines>|<text that stderr holds>
-  for row in '||0|tier essentials;tier dev;tier dev.home;addon audio|' \
-    'extra||0|tier essentials;tier dev;tier dev.home;tier extra;addon audio;addon bass|' \
-    'no-addons||0|tier essentials;tier dev;tier dev.home|' \
-    'no-tiers||1||brew/tiers' 'empty-tiers||1||brew/tiers' \
-    '|dev|2||profile list' '|--all|2||profile list' '|-h|2||profile list'; do
-    IFS='|' read -r change args expected_rc expected word <<<"$row"
+  local row change args expected_rc tiers addons word expected raw_out
+  # The real repo files, spelled out once so that list_sections cannot hide a format change.
+  prepare_case
+  run_profile "$HOME" list
+  raw_out="$(cat "$stub_dir/out"; print -rn -- .)"
+  collect_and_reset
+  assert_equal "$rc" "0"
+  assert_equal "${raw_out%.}" "Tiers (each one includes the ones above it):
+  essentials
+  dev
+  dev.home
+
+Add-ons (each one installs only itself):
+  audio
+"
+
+  # <change to brew/>|<arguments after list>|<exit code>|<tiers>|<add-ons>|<text that stderr holds>
+  for row in '||0|essentials dev dev.home|audio|' \
+    '|--names|0|essentials dev dev.home|audio|' \
+    'extra||0|essentials dev dev.home extra|audio bass|' \
+    'extra|--names|0|essentials dev dev.home extra|audio bass|' \
+    'no-addons||0|essentials dev dev.home||' \
+    'no-addons|--names|0|essentials dev dev.home||' \
+    'no-tiers||1|||brew/tiers' 'no-tiers|--names|1|||brew/tiers' \
+    'empty-tiers||1|||brew/tiers' 'empty-tiers|--names|1|||brew/tiers' \
+    '|dev|2|||profile list [--names]' '|--all|2|||profile list [--names]' \
+    '|-h|2|||profile list [--names]' '|--names extra|2|||profile list [--names]' \
+    '|dev --names|2|||profile list [--names]' '|--names --names|2|||profile list [--names]'; do
+    IFS='|' read -r change args expected_rc tiers addons word <<<"$row"
     prepare_case
     case "$change" in
       extra)
@@ -666,11 +701,18 @@ function test_list() {
       empty-tiers) rm -f "$fake_repo/brew/tiers"/* ;;
     esac
     run_profile "$HOME" list ${=args}
+    raw_out="$(cat "$stub_dir/out"; print -rn -- .)"
     collect_and_reset
 
+    expected=""
+    if [[ "$expected_rc" == 0 && "$args" == --names ]]; then
+      expected="$(print -rl -- ${=tiers} ${=addons})"$'\n'
+    elif [[ "$expected_rc" == 0 ]]; then
+      expected="$(list_sections "$tiers" "$addons")"$'\n'
+    fi
     print -r -- "row: $change, profile list $args"
     assert_equal "$rc" "$expected_rc"
-    assert_equal "$out" "${expected//;/$nl}"
+    assert_equal "${raw_out%.}" "$expected"
     [[ -n "$word" ]] && assert_contains "$err" "$word"
     assert_empty "$calls"
   done
