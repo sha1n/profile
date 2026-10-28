@@ -2,24 +2,7 @@
 
 # profile - Update the profile repo, or install or clean up the tools of machine profiles
 #
-# Usage: profile update
-#        profile install [profile...]
-#        profile cleanup
-#        profile list [--names]
-#   update      Pull the current branch of the repo, update its submodules, and remove
-#               the submodules that the repo no longer lists
-#   install     Install the Homebrew packages of the given profiles (default: essentials),
-#               and when the tiers applied include dev, restore the nvim plugins and parsers
-#               to config/nvim/lazy-lock.json and install the mise runtimes. A profile is a
-#               file: brew/tiers/<N>-<name>.Brewfile or brew/addons/<name>.Brewfile. The
-#               tiers form a chain in the order of <N>: each one includes the ones before
-#               it. An add-on stands outside the chain: it installs only itself
-#   cleanup     List the Homebrew packages and mise runtimes that no profile lists,
-#               and remove them after a confirmation
-#   list        Print the tiers in chain order, then the add-ons, each kind in its own section;
-#               with --names, print only the names, one per line
-#   -h, --help  Show this help and exit
-#
+# Usage: see __profile_cmd_usage, or run profile --help.
 # Exit codes: 0 success, 1 a step failed, 2 usage error.
 
 # Resolved here, because inside a function $0 is the function name.
@@ -37,10 +20,8 @@ function __profile_cmd_usage() {
               the submodules that the repo no longer lists
   install     install the Homebrew packages of the given profiles (default: essentials),
               and when the tiers applied include dev, restore the nvim plugins and parsers
-              to config/nvim/lazy-lock.json and install the mise runtimes. A profile is a
-              file: brew/tiers/<N>-<name>.Brewfile or brew/addons/<name>.Brewfile. The
-              tiers form a chain in the order of <N>: each one includes the ones before
-              it. An add-on stands outside the chain: it installs only itself
+              to config/nvim/lazy-lock.json and install the mise runtimes. profile list
+              shows the profiles and how they combine
   cleanup     list the Homebrew packages and mise runtimes that no profile lists,
               and remove them after a confirmation
   list        print the tiers in chain order, then the add-ons, each kind in its own section;
@@ -282,19 +263,29 @@ function __profile_cmd_remove_orphans() {
   return failed
 }
 
-# Sets the caller's tiers and addons to the Brewfiles under brew/, tiers in chain order and
-# add-ons in name order, and tier_names and addon_names to their profile names. Fails with 1
-# when brew/tiers holds no Brewfile.
+# Sets reply to the Brewfiles under brew/: the tiers in chain order, then the add-ons in
+# name order, and REPLY to the number of tiers. Fails with 1 when brew/tiers holds no Brewfile.
 function __profile_cmd_profile_files() {
   emulate -L zsh
   local brew="$__profile_repo/brew"
   # The file names are the only list of profiles, so a second copy here could drift from them.
-  tiers=("$brew"/tiers/*.Brewfile(Nn)) addons=("$brew"/addons/*.Brewfile(N))
-  tier_names=(${${tiers:t:r}#<->-}) addon_names=(${addons:t:r})
+  local -a tiers=("$brew"/tiers/*.Brewfile(Nn)) addons=("$brew"/addons/*.Brewfile(N))
   if (( ! ${#tiers} )); then
     __profile_log_error "no Brewfile in $brew/tiers"
     return 1
   fi
+  reply=("${tiers[@]}" "${addons[@]}")
+  REPLY=${#tiers}
+}
+
+# Usage: __profile_cmd_profile_names <tier-count> <file...>
+# Sets reply to the profile name of each file; only the first <tier-count> files carry
+# the <N>- prefix of a tier.
+function __profile_cmd_profile_names() {
+  emulate -L zsh
+  local -i tier_count="$1"
+  shift
+  reply=(${${@[1,tier_count]:t:r}#<->-} ${@[tier_count+1,-1]:t:r})
 }
 
 # Usage: __profile_cmd_brewfiles [profile...]
@@ -305,26 +296,26 @@ function __profile_cmd_profile_files() {
 function __profile_cmd_brewfiles() {
   emulate -L zsh
   local name
-  local -a tiers=() addons=() tier_names=() addon_names=()
-  local -i i last=0
-  reply=()
+  local -a files=() names=()
+  local -i tier_count i last=0
 
   __profile_cmd_profile_files || return 1
-  if (( ! $# )); then
-    reply=("${tiers[@]}" "${addons[@]}")
-    return 0
-  fi
+  files=("${reply[@]}") tier_count=$REPLY
+  (( $# )) || return 0
+  __profile_cmd_profile_names $tier_count "${files[@]}"
+  names=("${reply[@]}")
+
   for name in "$@"; do
-    i=${tier_names[(Ie)$name]}
-    if (( ! i && ! ${addon_names[(Ie)$name]} )); then
+    i=${names[(Ie)$name]}
+    if (( ! i )); then
       __profile_log_error "unknown machine profile: '$name'"
       return 2
     fi
-    (( i > last )) && last=i
+    (( i <= tier_count && i > last )) && last=i
   done
-  reply=("${(@)tiers[1,last]}")
-  for (( i = 1; i <= ${#addons}; i++ )); do
-    (( ${@[(Ie)${addon_names[i]}]} )) && reply+=("${addons[i]}")
+  reply=("${(@)files[1,last]}")
+  for (( i = tier_count + 1; i <= ${#files}; i++ )); do
+    (( ${@[(Ie)${names[i]}]} )) && reply+=("${files[i]}")
   done
   return 0
 }
@@ -662,7 +653,8 @@ function __profile_cmd_cleanup() {
 
 function __profile_cmd_list() {
   emulate -L zsh
-  local -a tiers=() addons=() tier_names=() addon_names=()
+  local -a tiers=() addons=()
+  local -i tier_count
   local names_only=false
 
   if [[ $# -eq 1 && "$1" == --names ]]; then
@@ -673,16 +665,19 @@ function __profile_cmd_list() {
   fi
 
   __profile_cmd_profile_files || return 1
+  tier_count=$REPLY
+  __profile_cmd_profile_names $tier_count "${reply[@]}"
+  tiers=("${(@)reply[1,tier_count]}") addons=("${(@)reply[tier_count+1,-1]}")
   if $names_only; then
-    print -rl -- "${tier_names[@]}" "${addon_names[@]}"
+    print -rl -- "${tiers[@]}" "${addons[@]}"
     return 0
   fi
   print -r -- "Tiers (each one includes the ones above it):"
-  print -rl -- "${(@)tier_names/#/  }"
-  (( ${#addon_names} )) || return 0
+  print -rl -- "${(@)tiers/#/  }"
+  (( ${#addons} )) || return 0
   print
   print -r -- "Add-ons (each one installs only itself):"
-  print -rl -- "${(@)addon_names/#/  }"
+  print -rl -- "${(@)addons/#/  }"
 }
 
 function __profile_cmd_main() {
