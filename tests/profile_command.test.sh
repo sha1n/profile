@@ -17,8 +17,13 @@ stub_bin="$stub_dir/bin"
 # of scripts/, not a link to it.
 fake_repo="$HOME/fake"
 stub_branch="feature-x"
-# Every known profile, so cleanup compares against the full list, whatever the caller set.
-all_profiles="$(known_profiles_of "$profile_home/brew/Brewfile")"
+# Every tier, then every add-on, so cleanup compares against the full list, whatever the
+# caller set.
+all_profile_names=(
+  ${="$(known_profiles_of "$profile_home/brew/Brewfile")"}
+  ${="$(addon_profiles_of "$profile_home/brew/Brewfile")"}
+)
+all_profiles="${(j: :)all_profile_names}"
 
 section_background() {
   env -i HOME="$HOME" PATH="$system_path" TERM="$section_term" "$zsh_bin" -fc 'print -nP "%K{blue}"'
@@ -390,7 +395,7 @@ function test_failing_step_stops_the_run() {
   local row failing command steps
   # <stub that fails>|<command>|<steps that ran>
   for row in 'git_pull|update|pull' 'git_submodule|update|pull submodule' \
-    'brew_bundle|install essentials dev|brew' 'nvim|install workstation|brew nvim' \
+    'brew_bundle|install essentials dev|brew' 'nvim|install dev.home|brew nvim' \
     'nvim|install dev|brew nvim' 'mise|install dev|brew nvim mise'; do
     IFS='|' read -r failing command steps <<<"$row"
     prepare_case
@@ -407,7 +412,8 @@ function test_failing_step_stops_the_run() {
   done
 }
 
-# The profiles that each set of arguments applies. Unknown names are rejected before any step.
+# The profiles that each set of arguments applies. Unknown names are rejected before any
+# step. The nvim sync and mise run only when the tier chain reaches dev; add-ons never count.
 function test_install_arguments() {
   test_case_title
 
@@ -415,8 +421,10 @@ function test_install_arguments() {
   # <arguments>|<exit code>|<steps>|<HOMEBREW_PROFILE_INSTALL_PROFILES, or the name the error gives>
   for row in '|0|brew|essentials' 'essentials|0|brew|essentials' \
     'essentials dev|0|brew nvim mise|essentials dev' \
-    'workstation|0|brew nvim mise|workstation' \
-    'essentials workstation|0|brew nvim mise|essentials workstation' \
+    'dev.home|0|brew nvim mise|dev.home' \
+    'essentials dev.home|0|brew nvim mise|essentials dev.home' \
+    'audio|0|brew|audio' 'dev audio|0|brew nvim mise|dev audio' \
+    'workstation|2||workstation' \
     'bogus|2||bogus' 'essentials bogus|2||bogus' 'base|2||base'; do
     IFS='|' read -r args expected_rc steps word <<<"$row"
     prepare_case
@@ -471,7 +479,7 @@ function test_install_finds_mise_from_brew_bundle() {
   assert_equal "$calls" "$(step_calls_of brew nvim mise)"
 }
 
-# dev and workstation sync the Neovim plugins, after brew bundle, which may have just
+# dev and dev.home sync the Neovim plugins, after brew bundle, which may have just
 # installed nvim; essentials does not (the brew-only rows of test_install_arguments).
 function test_install_syncs_nvim_plugins() {
   test_case_title
@@ -500,7 +508,7 @@ function test_install_missing_tools() {
   for row in 'brew mise|dev|nvim|TITLE brew TITLE nvim TITLE mise' 'brew|essentials||TITLE brew' \
     'mise|dev|brew nvim|TITLE brew TITLE nvim TITLE mise' 'nvim|essentials|brew|TITLE brew' \
     'nvim|dev|brew mise|TITLE brew TITLE nvim TITLE mise' \
-    'nvim|workstation|brew mise|TITLE brew TITLE nvim TITLE mise' \
+    'nvim|dev.home|brew mise|TITLE brew TITLE nvim TITLE mise' \
     'brew mise nvim|dev||TITLE brew TITLE nvim TITLE mise'; do
     IFS='|' read -r removed args steps expected <<<"$row"
     prepare_case
@@ -532,24 +540,31 @@ function test_install_missing_tools() {
   done
 }
 
-# The Brewfile `known` line is the only list of profiles: a name added there is accepted,
-# and a Brewfile without the line, or no Brewfile, stops the run. The order of the line
-# is the chain, so a name after dev applies dev and runs the nvim sync and mise, and a
-# name before it runs neither.
+# The Brewfile `known` and `addons` lines are the only lists of profiles: a name added to
+# either is accepted, a Brewfile without an `addons` line has no add-ons, and a Brewfile
+# without the `known` line, or no Brewfile, stops the run. The order of `known` is the
+# chain, so a tier after dev applies dev and runs the nvim sync and mise, and a tier
+# before it runs neither. An add-on stands outside the chain, so alone it runs only brew.
+# A row writes <NL> as a line break, because `read` stops at the first one.
 function test_install_reads_known_list_from_brewfile() {
   test_case_title
 
   local row content args expected_rc steps word
+  # $'\n' is not expanded inside a quoted ${...//...}, so the line break needs a variable.
+  local nl=$'\n'
   # <Brewfile content, or - for no file>|<arguments>|<exit code>|<steps>|<profiles value or error word>
   for row in 'known = %w[essentials dev extra]|extra|0|brew nvim mise|extra' \
     'known = %w[pre essentials dev]|pre|0|brew|pre' \
+    'known = %w[essentials dev]<NL>addons = %w[extra]|extra|0|brew|extra' \
+    'known = %w[essentials dev]<NL>addons = %w[extra]|dev extra|0|brew nvim mise|dev extra' \
+    'known = %w[essentials dev]<NL>addons = %w[]|dev|0|brew nvim mise|dev' \
     '# no profile list here||1||Brewfile' '-|essentials|1||Brewfile'; do
     IFS='|' read -r content args expected_rc steps word <<<"$row"
     prepare_case
     if [[ "$content" == - ]]; then
       rm -f "$brewfile"
     else
-      print -r -- "$content" >"$brewfile"
+      print -r -- "${content//<NL>/$nl}" >"$brewfile"
     fi
     run_profile "$HOME" install ${=args}
     collect_and_reset

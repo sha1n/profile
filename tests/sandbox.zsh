@@ -53,3 +53,21 @@ known_profiles_of() {
   print -r -- "no 'known' profile list in $brewfile" >&2
   return 1
 }
+
+# Prints the names of the `addons` line of <brewfile> on one line, in file order; an
+# empty `%w[]` prints an empty line. Add-ons stand outside the chain of `known`, so
+# each applies only itself. Same pattern as the add-on reader in scripts/profile.
+addon_profiles_of() {
+  local brewfile="$1" line
+  local addons_pattern='^addons = %w\[([a-z. ]*)\]$'
+  if [[ -r "$brewfile" ]]; then
+    for line in "${(@f)$(<"$brewfile")}"; do
+      if [[ "$line" =~ $addons_pattern ]]; then
+        print -r -- "${(j: :)${=match[1]}}"
+        return 0
+      fi
+    done
+  fi
+  print -r -- "no 'addons' profile list in $brewfile" >&2
+  return 1
+}

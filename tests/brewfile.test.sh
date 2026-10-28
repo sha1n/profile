@@ -4,8 +4,9 @@ source "$SHA1N_PROFILE_TESTS_HOME/sandbox.zsh"
 brewfile="$profile_home/brew/Brewfile"
 brew_bin="$(command -v brew)"
 entry_keywords='brew|cask|uv|mas|vscode|whalebrew|go|cargo|npm|flatpak|krew'
-# Work-only apps are installed by hand; the runtimes come from mise, not Homebrew.
-never_listed='slack zoom go nvm node maven pipx vim'
+# Work-only apps and a few desktop apps are installed by hand; the runtimes come from
+# mise, not Homebrew.
+never_listed='slack zoom go nvm node maven pipx vim brave-browser claude codex cmux'
 process_or_file_load='`|%x|\b(IO\.|File\.|Open3|Kernel\.|Process\.|system|exec|spawn|fork|popen|require|require_relative|load|eval|instance_eval|class_eval|zsh|bash)\b'
 
 # `brew bundle list` only evaluates the Brewfile and prints entry names: it does
@@ -59,17 +60,23 @@ function test_brewfile_layout() {
   local -a brew_dir_files=("$profile_home"/brew/*(DN:t))
   assert_equal "${(j: :)brew_dir_files}" "Brewfile"
 
-  local known
+  local known addons
   known="$(known_profiles_of "$brewfile")"
   assert_equal "$?" "0"
-  local -a known_profiles=(${=known})
+  addons="$(addon_profiles_of "$brewfile")"
+  assert_equal "$?" "0"
+  local -a known_profiles=(${=known}) addon_profiles=(${=addons})
+  local -a all_profiles=("${known_profiles[@]}" "${addon_profiles[@]}")
   local -a block_names=(
     ${(f)"$(grep -E '^[[:space:]]*if profiles\.include\?\("[^"]*"\)[[:space:]]*$' "$brewfile" | sed -E 's/^[[:space:]]*if profiles\.include\?\("(.*)"\)[[:space:]]*$/\1/')"}
   )
   assert_not_empty "${block_names[*]}"
-  print -r -- "check: every block is a known profile, and every known profile has one block"
-  assert_empty "${(@)block_names:|known_profiles}"
-  assert_empty "${(@)known_profiles:|block_names}"
+  print -r -- "check: tiers and add-ons are disjoint, and neither list repeats a name"
+  assert_empty "${(@)known_profiles:*addon_profiles}"
+  assert_empty "$(print -rl -- "${all_profiles[@]}" | sort | uniq -d)"
+  print -r -- "check: every block is a tier or an add-on, and every tier and add-on has one block"
+  assert_empty "${(@)block_names:|all_profiles}"
+  assert_empty "${(@)all_profiles:|block_names}"
   assert_empty "$(print -rl -- "${block_names[@]}" | sort | uniq -d)"
 
   print -r -- "check: every entry is inside a profile block"
@@ -93,27 +100,35 @@ function test_no_process_or_file_load() {
 function test_profile_chain() {
   test_case_title
 
-  # The order of `known` is the chain: a profile applies every profile before it.
-  assert_equal "$(known_profiles_of "$brewfile")" "essentials dev workstation"
+  # The order of `known` is the chain: a tier applies every tier before it.
+  assert_equal "$(known_profiles_of "$brewfile")" "essentials dev dev.home"
+  # Add-ons stand outside the chain: each applies only itself.
+  assert_equal "$(addon_profiles_of "$brewfile")" "audio"
 }
 
-# Each profile applies the profiles before it in the chain. Work-only apps and the
-# language runtimes (mise owns them) are listed by no profile. Neovim is in
-# essentials; its toolchain belongs to dev, whose profile install runs plugin sync.
+# A tier applies the tiers before it in the chain; an add-on applies only itself, so
+# an add-on alone installs no essentials. Unset or empty applies every tier and every
+# add-on. Hand-installed apps and the language runtimes (mise owns them) are listed by
+# no profile. Neovim is in essentials; its toolchain belongs to dev, whose profile
+# install runs plugin sync.
 function test_profile_selection() {
   test_case_title
 
-  local essentials='starship coreutils gnu-time rsync watch wget tree bat sha1n/tap/bert fzf jq ripgrep yq poppler neovim git gh sublime-text brave-browser claude codex'
-  local dev='mise uv make go-task shellcheck openspec gopls basedpyright typescript lua-language-server stylua tree-sitter-cli antigravity-cli cmux acdc-mcp repulse'
-  local workstation='llvm goreleaser git-lfs git-filter-repo gnupg docker-desktop visual-studio-code orca'
+  local essentials='starship font-jetbrains-mono-nerd-font coreutils gnu-time parallel rsync watch wget tree bat sha1n/tap/bert fzf jq yq ripgrep poppler neovim sublime-text git gh'
+  local dev='mise uv make go-task shellcheck openspec antigravity-cli acdc-mcp repulse gopls basedpyright typescript lua-language-server stylua tree-sitter-cli'
+  local dev_home='llvm goreleaser git-lfs git-filter-repo gnupg warp docker-desktop visual-studio-code orca'
+  local audio='blackhole-2ch au-lab'
   local row value expected_rc present absent output exit_code entry
   # <HOMEBREW_PROFILE_INSTALL_PROFILES, or <unset>>|<exit code>|<present entries or text>|<absent entries>
-  for row in "<unset>|0|$essentials $dev $workstation|" \
-    "|0|$essentials $dev $workstation|" \
-    "essentials|0|$essentials|$dev $workstation" \
-    "dev|0|$essentials $dev|$workstation" \
-    "workstation|0|$essentials $dev $workstation|" \
-    "essentials workstation|0|$essentials $dev $workstation|" \
+  for row in "<unset>|0|$essentials $dev $dev_home $audio|" \
+    "|0|$essentials $dev $dev_home $audio|" \
+    "essentials|0|$essentials|$dev $dev_home $audio" \
+    "dev|0|$essentials $dev|$dev_home $audio" \
+    "dev.home|0|$essentials $dev $dev_home|$audio" \
+    "audio|0|$audio|$essentials $dev $dev_home" \
+    "dev audio|0|$essentials $dev $audio|$dev_home" \
+    "audio dev.home|0|$essentials $dev $dev_home $audio|" \
+    'workstation|1|workstation|' \
     'dev bogus|1|bogus|'; do
     IFS='|' read -r value expected_rc present absent <<<"$row"
     if [[ "$value" == "<unset>" ]]; then
@@ -142,8 +157,8 @@ function test_profile_selection() {
     fi
   done
 
-  print -r -- "check: a name with one before it in the chain changes nothing"
-  assert_equal "$(brew_bundle_list 'essentials workstation')" "$(brew_bundle_list workstation)"
+  print -r -- "check: a tier with one before it in the chain changes nothing"
+  assert_equal "$(brew_bundle_list 'essentials dev.home')" "$(brew_bundle_list dev.home)"
 }
 
 setup
