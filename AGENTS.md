@@ -45,7 +45,7 @@ Personal Zsh configuration repository: shell environment, dotfiles, aliases, fun
 profile update            # Pull the current branch, update submodules, remove submodules no longer in .gitmodules (keeps any with local work)
 profile install [profile...]    # brew bundle for the given tier and the ones before it in the chain, plus each given add-on alone (default: essentials), then, only when the tiers reach dev, :ProfileSync in headless nvim and mise install
 profile cleanup           # List the formulae, casks and taps no profile lists and unused mise versions, ask [y/N], then remove
-profile list [--names]    # Print the tiers in chain order, then the add-ons, in two sections; --names prints only the names, one per line; runs nothing
+profile list [--names]    # Print the tiers in chain order, then the add-ons, each under a brew-style "==> " headline (colored on a terminal unless NO_COLOR is set); --names prints only the names, one per line; runs nothing
 make test                 # Run tests (also: ./tests/run_tests.sh)
 make update_submodules    # Update all git submodules
 make compile              # Compile zsh files to .zwc bytecode

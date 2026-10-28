@@ -106,17 +106,19 @@ profile list                     # print the profiles: tiers in chain order, the
 profile list --names             # print only the profile names, one per line
 ```
 
-`profile list` prints the profiles from the file names under `brew/`, a section per kind:
+`profile list` prints the profiles from the file names under `brew/`, a section per kind: the tiers in chain order, each one including the ones above it, then the add-ons, each one installing only itself. It leaves out the add-ons section when there are no add-ons.
 
 ```text
-Tiers (each one includes the ones above it):
-  essentials
-  dev
-  dev.home
+==> Tiers
+essentials
+dev
+dev.home
 
-Add-ons (each one installs only itself):
-  audio
+==> Add-ons
+audio
 ```
+
+On a terminal the headlines are colored like the ones of `brew list`, unless `NO_COLOR` is set to a non-empty value.
 
 `profile list --names` prints the same names, one per line, without headers. `profile install <TAB>` completes the profile names from `profile list --names`.
 

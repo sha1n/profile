@@ -24,8 +24,9 @@ function __profile_cmd_usage() {
               shows the profiles and how they combine
   cleanup     list the Homebrew packages and mise runtimes that no profile lists,
               and remove them after a confirmation
-  list        print the tiers in chain order, then the add-ons, each kind in its own section;
-              with --names, print only the names, one per line
+  list        print the tiers in chain order (each one includes the ones above it),
+              then the add-ons (each one installs only itself), each kind under its
+              own headline; with --names, print only the names, one per line
   -h, --help  show this help and exit"
 }
 
@@ -688,12 +689,15 @@ function __profile_cmd_list() {
     print -rl -- "${tiers[@]}" "${addons[@]}"
     return 0
   fi
-  print -r -- "Tiers (each one includes the ones above it):"
-  print -rl -- "${(@)tiers/#/  }"
+  # Matches the headline of brew list, which also honors NO_COLOR.
+  local headline='==> %s'
+  [[ -t 1 && -z "${NO_COLOR-}" ]] && headline=$'\e[34m==>\e[0m \e[1m%s\e[0m'
+  printf "$headline\n" Tiers
+  print -rl -- "${tiers[@]}"
   (( ${#addons} )) || return 0
   print
-  print -r -- "Add-ons (each one installs only itself):"
-  print -rl -- "${(@)addons/#/  }"
+  printf "$headline\n" Add-ons
+  print -rl -- "${addons[@]}"
 }
 
 function __profile_cmd_main() {
