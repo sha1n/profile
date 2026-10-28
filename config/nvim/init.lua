@@ -47,7 +47,7 @@ require("lazy").setup({
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
-  -- LSP server definitions. brew/Brewfile installs the servers themselves.
+  -- LSP server definitions. brew/tiers/2-dev.Brewfile installs the servers themselves.
   {
     'neovim/nvim-lspconfig',
     dependencies = {
