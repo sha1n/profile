@@ -642,6 +642,47 @@ function test_install_reads_profiles_from_file_names() {
   done
 }
 
+# A profile file that cannot be read (here a directory or a dangling link, which fail for
+# root too) stops the run before any Homebrew, nvim or mise call: brew would otherwise get
+# the join of the readable files only, and a cleanup would offer the packages of the
+# unread profile for removal. Install reads only the files it applies, so a broken file
+# outside them changes nothing. details holds the Homebrew queries that calls leaves out.
+function test_unreadable_profile_file() {
+  test_case_title
+
+  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile
+  local row change command expected_rc steps word expected
+  # <change to brew/>|<command>|<exit code>|<steps>|<files under brew/ joined for brew>
+  for row in "dev-dir|install dev|1||" "dev-dir|install dev.home|1||" \
+    "dev-dir|install|0|brew|$e" "addon-dir|install broken|1||" \
+    "addon-dir|install dev broken|1||" "addon-dir|install dev|0|brew nvim mise|$e $d" \
+    "addon-link|install broken|1||" "dev-dir|cleanup|1||" "addon-dir|cleanup|1||" \
+    "addon-link|cleanup|1||"; do
+    IFS='|' read -r change command expected_rc steps word <<<"$row"
+    prepare_case
+    stub_items brew
+    stub_items mise
+    case "$change" in
+      dev-dir) rm -f "$fake_repo/brew/$d" && mkdir "$fake_repo/brew/$d" ;;
+      addon-dir) mkdir "$fake_repo/brew/addons/broken.Brewfile" ;;
+      addon-link) ln -s missing.Brewfile "$fake_repo/brew/addons/broken.Brewfile" ;;
+    esac
+    answer=$'y\ny' run_profile "$HOME" ${=command}
+    (( expected_rc == 0 )) && expected="$(expected_bundle ${=word})"
+    collect_and_reset
+
+    print -r -- "row: $change, profile $command"
+    assert_equal "$rc" "$expected_rc"
+    assert_equal "$calls" "$(step_calls_of ${=steps})"
+    if (( expected_rc == 0 )); then
+      assert_bundle_files "$expected"
+    else
+      assert_empty "$details"
+      assert_contains "$err" "could not read the profile Brewfiles"
+    fi
+  done
+}
+
 # Prints what `profile list` prints for the tiers <tiers> and the add-ons <addons>, each a
 # space-separated list: a section per kind, the add-ons one only when there is an add-on.
 list_sections() {
@@ -1186,6 +1227,7 @@ run_test test_install_finds_mise_from_brew_bundle
 run_test test_install_syncs_nvim_plugins
 run_test test_install_missing_tools
 run_test test_install_reads_profiles_from_file_names
+run_test test_unreadable_profile_file
 run_test test_list
 run_test test_cleanup_dry_runs
 run_test test_cleanup_answers
