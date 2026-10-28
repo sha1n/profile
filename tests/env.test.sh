@@ -57,15 +57,15 @@ function test_pip_require_virtualenv() {
   assert_contains "$exported" "export"
 }
 
-function test_homebrew_bundle_file() {
+# Only profile install and cleanup choose the Brewfiles, so the shell exports no Brewfile
+# path for a plain `brew bundle`, and no profile selection.
+function test_no_homebrew_bundle_variables() {
   test_case_title
 
-  local exported="$(load_and_eval "$system_path" 'print -r -- "${(t)HOMEBREW_BUNDLE_FILE}"')"
-  local value="$(load_and_eval "$system_path" 'print -r -- "$HOMEBREW_BUNDLE_FILE"')"
+  local bundle_file_type="$(load_and_eval "$system_path" 'print -r -- "${(t)HOMEBREW_BUNDLE_FILE}"')"
   local profiles_type="$(load_and_eval "$system_path" 'print -r -- "${(t)HOMEBREW_PROFILE_INSTALL_PROFILES}"')"
 
-  assert_equal "$value" "$profile_home/brew/Brewfile"
-  assert_contains "$exported" "export"
+  assert_equal "$bundle_file_type" ""
   assert_equal "$profiles_type" ""
 }
 
@@ -215,7 +215,7 @@ function test_starship_disk_module() {
 
 setup
 run_test test_pip_require_virtualenv
-run_test test_homebrew_bundle_file
+run_test test_no_homebrew_bundle_variables
 run_test test_starship_config
 run_test test_go_bin_on_path
 run_test test_mise_activated

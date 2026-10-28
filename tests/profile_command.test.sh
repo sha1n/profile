@@ -17,13 +17,6 @@ stub_bin="$stub_dir/bin"
 # of scripts/, not a link to it.
 fake_repo="$HOME/fake"
 stub_branch="feature-x"
-# Every tier, then every add-on, so cleanup compares against the full list, whatever the
-# caller set.
-all_profile_names=(
-  ${="$(known_profiles_of "$profile_home/brew/Brewfile")"}
-  ${="$(addon_profiles_of "$profile_home/brew/Brewfile")"}
-)
-all_profiles="${(j: :)all_profile_names}"
 
 section_background() {
   env -i HOME="$HOME" PATH="$system_path" TERM="$section_term" "$zsh_bin" -fc 'print -nP "%K{blue}"'
@@ -37,6 +30,9 @@ section_background() {
 # works the same on macOS and Linux; the runner feeds a pipe, whose rdev is 0.
 # Every stub that stands for a step prints "STUB <call>" to stdout, so the order of
 # section titles and steps can be read from the output.
+# The --file of a call is a temporary file that is gone once profile ends, so the stub
+# copies it to <stub_dir>/bundle_file_<n> (n counts the calls with a --file), appends its
+# path to <stub_dir>/bundle_paths, and records the call with <bundle> in its place.
 write_stub() {
   local target="$1" body="$2"
   {
@@ -44,6 +40,15 @@ write_stub() {
     print -r -- "stub_dir=${(q)stub_dir}"
     cat <<'EOF'
 zmodload zsh/stat
+file_index="${@[(ie)--file]}"
+if (( file_index < $# )); then
+  bundle_copies=("$stub_dir"/bundle_file_*(N))
+  bundle_copy="$stub_dir/bundle_file_$(( ${#bundle_copies} + 1 ))"
+  cp -- "${@[file_index+1]}" "$bundle_copy" 2>/dev/null ||
+    print -r -- "<unreadable ${@[file_index+1]}>" >"$bundle_copy"
+  print -r -- "${@[file_index+1]}" >>"$stub_dir/bundle_paths"
+  argv[file_index+1]="<bundle>"
+fi
 call="${0:t}${*:+ $*}"
 stdin_kind=other
 [[ "$(zstat -f 0 +rdev 2>/dev/null)" == "$(zstat +rdev /dev/null)" ]] && stdin_kind=devnull
@@ -125,12 +130,12 @@ remove_jq() {
   rm -f "$no_jq_path/jq"
 }
 
-# The real Brewfile, so the scripts read the list of profiles that ships in the repo.
+# The real Brewfiles, so the scripts read the list of profiles that ships in the repo.
 prepare_case() {
   reset_home
   mkdir -p "$stub_bin" "$fake_repo/brew"
   cp -R "$profile_home/scripts" "$fake_repo/scripts"
-  cp "$profile_home/brew/Brewfile" "$fake_repo/brew/Brewfile"
+  cp -R "$profile_home/brew/tiers" "$profile_home/brew/addons" "$fake_repo/brew/"
 
   local step
   for step in git_pull git_submodule brew_bundle mise nvim brew_dry brew_force brew_list \
@@ -215,7 +220,37 @@ exit "$(<"$stub_dir/nvim_exit")"'
   write_stub "$fake_repo/install.sh" 'exit 0'
 
   repo="${fake_repo:A}"
-  brewfile="$repo/brew/Brewfile"
+}
+
+# Prints the files joined end to end, then a full stop, so that $(...) keeps their
+# final line breaks and two contents compare byte for byte.
+joined() {
+  cat -- "$@"
+  print -rn -- .
+}
+
+# Prints the join of the fake repo files under brew/ at the <relative paths>. Call it
+# before collect_and_reset, which removes the fake repo.
+expected_bundle() {
+  joined "${@/#/$fake_repo/brew/}"
+}
+
+# Prints the join of every tier of the fake repo, in chain order, then every add-on.
+expected_bundle_all() {
+  joined ${(f)"$(tier_files_of "$fake_repo/brew"; addon_files_of "$fake_repo/brew")"}
+}
+
+# Asserts that the --file of every `brew bundle` call held <expected>, and that no
+# temporary file outlived the run.
+assert_bundle_files() {
+  local expected="$1" content
+  local -a bundle_lines=("${(@f)$(details_of 'brew bundle *')}")
+  assert_not_empty "${bundle_lines[*]}"
+  assert_equal "${#bundle_files}" "${#bundle_lines}"
+  for content in "${bundle_files[@]}"; do
+    assert_equal "$content" "$expected"
+  done
+  assert_empty "$leftover_bundle_paths"
 }
 
 # The call that each step makes, by short name.
@@ -223,13 +258,13 @@ step_call() {
   case "$1" in
     pull) print -r -- "git -C $repo pull origin $stub_branch" ;;
     submodule) print -r -- "git -C $repo submodule update --init --recursive" ;;
-    brew) print -r -- "brew bundle --no-upgrade --file $brewfile" ;;
+    brew) print -r -- "brew bundle --no-upgrade --file <bundle>" ;;
     mise) print -r -- "mise install" ;;
     # The --cmd flag runs before init.lua, so the config can tell a sync run from an
     # editing session. The pcall wrapper quits nvim when :ProfileSync is missing or
     # fails; a bare +ProfileSync would leave headless nvim waiting for input forever.
     nvim) print -r -- "nvim --headless --cmd lua vim.g.profile_sync = true +lua local ok, err = pcall(vim.cmd, 'ProfileSync') if not ok then io.stderr:write(tostring(err) .. '\n') vim.cmd('cquit 1') end" ;;
-    brew_dry) print -r -- "brew bundle cleanup --formula --cask --tap --file $brewfile" ;;
+    brew_dry) print -r -- "brew bundle cleanup --formula --cask --tap --file <bundle>" ;;
     brew_rm_cask) print -r -- "brew uninstall --cask orphan-cask" ;;
     brew_rm_formula) print -r -- "brew uninstall --formula --force orphan-formula other-formula" ;;
     brew_untap) print -r -- "brew untap orphan/tap" ;;
@@ -296,6 +331,15 @@ collect_and_reset() {
   details="$(cat "$stub_dir/details" 2>/dev/null)"
   config_dir_exists=false
   [[ -e "$HOME/.config/profile" ]] && config_dir_exists=true
+  bundle_files=()
+  local file
+  for file in "$stub_dir"/bundle_file_*(Nn); do
+    bundle_files+=("$(joined "$file")")
+  done
+  leftover_bundle_paths=""
+  for file in ${(f)"$(cat "$stub_dir/bundle_paths" 2>/dev/null)"}; do
+    [[ -e "$file" ]] && leftover_bundle_paths+="$file"$'\n'
+  done
   # The branch query and the read-only git calls of the orphan step are left out: the
   # update may make them in any way it likes, and the stub answers them with no orphans.
   # So are the read-only Homebrew queries of the cleanup guard; cases check them
@@ -412,23 +456,29 @@ function test_failing_step_stops_the_run() {
   done
 }
 
-# The profiles that each set of arguments applies. Unknown names are rejected before any
-# step. The nvim sync and mise run only when the tier chain reaches dev; add-ons never count.
+# The files that each set of arguments applies: every tier up to the highest tier given,
+# in chain order, then each add-on given, in name order, each file once; brew gets them
+# joined into one file. Unknown names, file names included, are rejected before any step.
+# The nvim sync and mise run only when the tiers applied include dev; add-ons never count.
 function test_install_arguments() {
   test_case_title
 
-  local row args expected_rc steps word
-  # <arguments>|<exit code>|<steps>|<HOMEBREW_PROFILE_INSTALL_PROFILES, or the name the error gives>
-  for row in '|0|brew|essentials' 'essentials|0|brew|essentials' \
-    'essentials dev|0|brew nvim mise|essentials dev' \
-    'dev.home|0|brew nvim mise|dev.home' \
-    'essentials dev.home|0|brew nvim mise|essentials dev.home' \
-    'audio|0|brew|audio' 'dev audio|0|brew nvim mise|dev audio' \
-    'workstation|2||workstation' \
-    'bogus|2||bogus' 'essentials bogus|2||bogus' 'base|2||base'; do
+  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile h=tiers/3-dev.home.Brewfile
+  local a=addons/audio.Brewfile
+  local row args expected_rc steps word expected
+  # <arguments>|<exit code>|<steps>|<files under brew/ joined for brew, or the name the error gives>
+  for row in "|0|brew|$e" "essentials|0|brew|$e" "dev|0|brew nvim mise|$e $d" \
+    "essentials dev|0|brew nvim mise|$e $d" "dev dev|0|brew nvim mise|$e $d" \
+    "dev.home|0|brew nvim mise|$e $d $h" "essentials dev.home|0|brew nvim mise|$e $d $h" \
+    "dev.home essentials dev|0|brew nvim mise|$e $d $h" \
+    "audio|0|brew|$a" "audio audio|0|brew|$a" "essentials audio|0|brew|$e $a" \
+    "dev audio|0|brew nvim mise|$e $d $a" "audio dev|0|brew nvim mise|$e $d $a" \
+    'workstation|2||workstation' 'bogus|2||bogus' 'essentials bogus|2||bogus' 'base|2||base' \
+    '1-essentials|2||1-essentials' 'audio.Brewfile|2||audio.Brewfile'; do
     IFS='|' read -r args expected_rc steps word <<<"$row"
     prepare_case
     run_profile "$HOME" install ${=args}
+    (( expected_rc == 0 )) && expected="$(expected_bundle ${=word})"
     collect_and_reset
 
     print -r -- "row: profile install $args"
@@ -436,7 +486,8 @@ function test_install_arguments() {
     assert_equal "$calls" "$(step_calls_of ${=steps})"
     if (( expected_rc == 0 )); then
       assert_equal "$(title_and_step_sequence)" "$(expected_sequence ${=steps})"
-      assert_contains "$(details_of 'brew bundle*')" "|profiles=$word|"
+      assert_bundle_files "$expected"
+      assert_contains "$(details_of 'brew bundle*')" "|profiles=<unset>|"
     else
       assert_contains "$err" "$word"
     fi
@@ -462,7 +513,7 @@ function test_install_dev() {
   assert_equal "$calls" "$(step_calls_of brew nvim mise)"
   assert_equal "$(title_and_step_sequence)" "$(expected_sequence brew nvim mise)"
   assert_contains "$(details_of 'nvim *')" "|stdin=devnull"
-  assert_contains "$(details_of 'brew bundle*')" "|profiles=dev|no_autoremove=<unset>|stdin=devnull"
+  assert_contains "$(details_of 'brew bundle*')" "|profiles=<unset>|no_autoremove=<unset>|stdin=devnull"
   assert_contains "$(details_of 'mise install*')" "mise install|cwd=/|"
   assert_contains "$(details_of 'mise install*')" "|stdin=devnull"
   assert_equal "$config_dir_exists" "false"
@@ -540,40 +591,47 @@ function test_install_missing_tools() {
   done
 }
 
-# The Brewfile `known` and `addons` lines are the only lists of profiles: a name added to
-# either is accepted, a Brewfile without an `addons` line has no add-ons, and a Brewfile
-# without the `known` line, or no Brewfile, stops the run. The order of `known` is the
-# chain, so a tier after dev applies dev and runs the nvim sync and mise, and a tier
-# before it runs neither. An add-on stands outside the chain, so alone it runs only brew.
-# A row writes <NL> as a line break, because `read` stops at the first one.
-function test_install_reads_known_list_from_brewfile() {
+# The file names under brew/ are the only list of profiles: a file added to tiers/ or
+# addons/ is a profile, the tier numbers order the chain as numbers (5 before 10), and no
+# tier file stops the run. A tier after dev applies dev and runs the nvim sync and mise,
+# and a tier before it runs neither. A missing addons/ means no add-ons.
+function test_install_reads_profiles_from_file_names() {
   test_case_title
 
-  local row content args expected_rc steps word
-  # $'\n' is not expanded inside a quoted ${...//...}, so the line break needs a variable.
-  local nl=$'\n'
-  # <Brewfile content, or - for no file>|<arguments>|<exit code>|<steps>|<profiles value or error word>
-  for row in 'known = %w[essentials dev extra]|extra|0|brew nvim mise|extra' \
-    'known = %w[pre essentials dev]|pre|0|brew|pre' \
-    'known = %w[essentials dev]<NL>addons = %w[extra]|extra|0|brew|extra' \
-    'known = %w[essentials dev]<NL>addons = %w[extra]|dev extra|0|brew nvim mise|dev extra' \
-    'known = %w[essentials dev]<NL>addons = %w[]|dev|0|brew nvim mise|dev' \
-    '# no profile list here||1||Brewfile' '-|essentials|1||Brewfile'; do
-    IFS='|' read -r content args expected_rc steps word <<<"$row"
+  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile h=tiers/3-dev.home.Brewfile
+  local a=addons/audio.Brewfile x=addons/extra.Brewfile
+  local row change args expected_rc steps word expected
+  # <change to brew/>|<arguments>|<exit code>|<steps>|<files under brew/ joined for brew, or the text the error gives>
+  for row in "extra-tier|extra|0|brew nvim mise|$e $d $h tiers/4-extra.Brewfile" \
+    "renumbered|pre|0|brew|tiers/5-pre.Brewfile" \
+    "renumbered|dev|0|brew nvim mise|tiers/5-pre.Brewfile tiers/10-essentials.Brewfile tiers/20-dev.Brewfile" \
+    "extra-addon|extra|0|brew|$x" "extra-addon|extra dev|0|brew nvim mise|$e $d $x" \
+    "extra-addon|extra audio|0|brew|$a $x" \
+    "no-addons|dev|0|brew nvim mise|$e $d" 'no-addons|audio|2||audio' \
+    'no-tiers||1||brew/tiers' 'no-tiers|audio|1||brew/tiers' 'empty-tiers||1||brew/tiers'; do
+    IFS='|' read -r change args expected_rc steps word <<<"$row"
     prepare_case
-    if [[ "$content" == - ]]; then
-      rm -f "$brewfile"
-    else
-      print -r -- "${content//<NL>/$nl}" >"$brewfile"
-    fi
+    case "$change" in
+      extra-tier) print -r -- 'brew "extra-formula"' >"$fake_repo/brew/tiers/4-extra.Brewfile" ;;
+      renumbered)
+        mv "$fake_repo/brew/$e" "$fake_repo/brew/tiers/10-essentials.Brewfile"
+        mv "$fake_repo/brew/$d" "$fake_repo/brew/tiers/20-dev.Brewfile"
+        mv "$fake_repo/brew/$h" "$fake_repo/brew/tiers/30-dev.home.Brewfile"
+        print -r -- 'brew "pre-formula"' >"$fake_repo/brew/tiers/5-pre.Brewfile" ;;
+      extra-addon) print -r -- 'cask "extra-cask"' >"$fake_repo/brew/$x" ;;
+      no-addons) rm -rf "$fake_repo/brew/addons" ;;
+      no-tiers) rm -rf "$fake_repo/brew/tiers" ;;
+      empty-tiers) rm -f "$fake_repo/brew/tiers"/* ;;
+    esac
     run_profile "$HOME" install ${=args}
+    (( expected_rc == 0 )) && expected="$(expected_bundle ${=word})"
     collect_and_reset
 
-    print -r -- "row: Brewfile '$content', profile install $args"
+    print -r -- "row: $change, profile install $args"
     assert_equal "$rc" "$expected_rc"
     assert_equal "$calls" "$(step_calls_of ${=steps})"
     if (( expected_rc == 0 )); then
-      assert_contains "$(details_of 'brew bundle*')" "|profiles=$word|"
+      assert_bundle_files "$expected"
     else
       assert_contains "$err" "$word"
     fi
@@ -622,21 +680,23 @@ cleanup_sequence() {
   print -r -- "${(j: :)words}"
 }
 
-# Both dry runs, with the caller's environment narrowing the profiles, and the answer No
-# to each question. Each question follows its own list and comes before the next title.
+# Both dry runs, and the answer No to each question. Each question follows its own list
+# and comes before the next title. Every Homebrew query reads every tier and add-on, since
+# a subset would make the packages of the other profiles look unlisted.
 function test_cleanup_dry_runs() {
   test_case_title
   prepare_case
   stub_items brew
   stub_items mise
-  answer=$'n\nn' run_command "$HOME" /usr/bin/env HOMEBREW_PROFILE_INSTALL_PROFILES=essentials \
-    "$fake_repo/scripts/profile" cleanup
+  answer=$'n\nn' run_profile "$HOME" cleanup
+  local expected="$(expected_bundle_all)"
   collect_and_reset
 
   assert_equal "$rc" "0"
   assert_equal "$calls" "$(step_calls_of brew_dry mise_ls)"
   assert_equal "$(details_of 'brew bundle cleanup*')" \
-    "$(step_call brew_dry)|cwd=/|profiles=$all_profiles|no_autoremove=<unset>|stdin=devnull"
+    "$(step_call brew_dry)|cwd=/|profiles=<unset>|no_autoremove=<unset>|stdin=devnull"
+  assert_bundle_files "$expected"
   assert_contains "$(details_of 'mise ls*')" "$(step_call mise_ls)|cwd=/|"
   assert_contains "$(details_of 'mise ls*')" "|stdin=devnull"
   assert_equal "$(cleanup_sequence)" \
@@ -785,7 +845,7 @@ function test_cleanup_keeps_profile_packages() {
   test_case_title
 
   local vscode="cask:visual-studio-code" bert="formula:sha1n/tap/bert"
-  local row entries candidates unreadable kept count removals word name head
+  local row entries candidates unreadable kept count removals word name head expected
   local -a kept_lines listed
   # <profile entries>|<candidates of the dry run>|<candidate whose names cannot be read, or ->|<kept warnings, separated by commas>|<count in the question, or - for none>|<removal calls, separated by commas>
   for row in \
@@ -804,6 +864,7 @@ function test_cleanup_keeps_profile_packages() {
       >"$stub_dir/brew_info_docker_out"
     [[ "$unreadable" == - ]] || print -r -- 1 >"$stub_dir/brew_info_${unreadable}_exit"
     answer=y merge_streams=1 run_profile "$HOME" cleanup
+    expected="$(expected_bundle_all)"
     collect_and_reset
 
     print -r -- "row: entries '$entries', candidates '$candidates', $unreadable unreadable"
@@ -839,8 +900,9 @@ function test_cleanup_keeps_profile_packages() {
 
     print -r -- "check: the entries of every profile, and the names of each candidate"
     assert_equal "$(details_of 'brew bundle list*' | sort)" "$(for word in formula cask tap; do
-      print -r -- "brew bundle list --$word --file $brewfile|cwd=/|profiles=$all_profiles|no_autoremove=<unset>|stdin=devnull"
+      print -r -- "brew bundle list --$word --file <bundle>|cwd=/|profiles=<unset>|no_autoremove=<unset>|stdin=devnull"
     done | sort)"
+    assert_bundle_files "$expected"
     for word in ${=candidates}; do
       [[ "$word" == tap:* ]] && continue
       assert_contains "$(details_of 'brew info*')" "brew info --json=v2 --${word%%:*} ${word#*:}|cwd=/|"
@@ -1043,7 +1105,7 @@ run_test test_install_dev
 run_test test_install_finds_mise_from_brew_bundle
 run_test test_install_syncs_nvim_plugins
 run_test test_install_missing_tools
-run_test test_install_reads_known_list_from_brewfile
+run_test test_install_reads_profiles_from_file_names
 run_test test_cleanup_dry_runs
 run_test test_cleanup_answers
 run_test test_cleanup_failures
