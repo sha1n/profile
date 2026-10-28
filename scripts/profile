@@ -320,9 +320,22 @@ function __profile_cmd_brewfiles() {
   return 0
 }
 
+# Sets REPLY to the content of the given Brewfiles. zsh ignores the exit status of the
+# command in =(...), so the files are read here first; the sentinel keeps the trailing
+# newlines that $(...) strips.
+function __profile_cmd_join_brewfiles() {
+  emulate -L zsh
+  REPLY="$(cat -- "$@" && print -rn -- .)" || {
+    __profile_log_error "could not read the profile Brewfiles"
+    return 1
+  }
+  REPLY="${REPLY%.}"
+}
+
 function __profile_cmd_install() {
   emulate -L zsh
   local -a profiles=("$@") files=() reply=()
+  local REPLY
 
   if (( ${#${(M)profiles:#-*}} )); then
     __profile_cmd_usage >&2
@@ -334,8 +347,9 @@ function __profile_cmd_install() {
 
   __profile_log_section "Homebrew packages"
   if (( $+commands[brew] )); then
+    __profile_cmd_join_brewfiles "${files[@]}" || return 1
     # =(...) is a temporary file that zsh removes once brew returns.
-    brew bundle --no-upgrade --file =(cat "${files[@]}") </dev/null ||
+    brew bundle --no-upgrade --file =(print -rn -- "$REPLY") </dev/null ||
       { __profile_log_error "brew bundle failed"; return 1; }
   else
     __profile_log_warn "brew is not on PATH. Skipping brew bundle..."
@@ -625,6 +639,7 @@ function __profile_cmd_cleanup_mise() {
 function __profile_cmd_cleanup() {
   emulate -L zsh
   local -a reply=()
+  local REPLY
 
   if (( $# )); then
     __profile_cmd_usage >&2
@@ -638,7 +653,8 @@ function __profile_cmd_cleanup() {
     # Every profile, since a subset would make the packages of the other profiles look
     # unlisted. One temporary file serves every Homebrew call, and zsh removes it once
     # the function returns.
-    __profile_cmd_cleanup_brew =(cat "${reply[@]}") || return 1
+    __profile_cmd_join_brewfiles "${reply[@]}" || return 1
+    __profile_cmd_cleanup_brew =(print -rn -- "$REPLY") || return 1
   else
     __profile_log_warn "brew is not on PATH. Skipping brew bundle cleanup..."
   fi
