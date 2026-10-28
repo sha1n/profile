@@ -1,12 +1,18 @@
 #!/usr/bin/env zsh
 
 source "$SHA1N_PROFILE_TESTS_HOME/sandbox.zsh"
-brewfile="$profile_home/brew/Brewfile"
+brew_dir="$profile_home/brew"
 brew_bin="$(command -v brew)"
-entry_keywords='brew|cask|uv|mas|vscode|whalebrew|go|cargo|npm|flatpak|krew'
-# Work-only apps are installed by hand; the runtimes come from mise, not Homebrew.
-never_listed='slack zoom go nvm node maven pipx vim'
-process_or_file_load='`|%x|\b(IO\.|File\.|Open3|Kernel\.|Process\.|system|exec|spawn|fork|popen|require|require_relative|load|eval|instance_eval|class_eval|zsh|bash)\b'
+entry_keywords='tap|brew|cask|uv|mas|vscode|whalebrew|go|cargo|npm|flatpak|krew'
+# Work-only apps and a few desktop apps are installed by hand; the runtimes come from
+# mise, not Homebrew.
+never_listed='slack zoom go nvm node maven pipx vim brave-browser claude codex cmux'
+sha1n_tap_line='tap "sha1n/tap", trusted: true'
+
+all_files() {
+  tier_files_of "$brew_dir"
+  addon_files_of "$brew_dir"
+}
 
 # `brew bundle list` only evaluates the Brewfile and prints entry names: it does
 # not tap, fetch or trust anything, so it works in the sandbox HOME without the
@@ -14,146 +20,170 @@ process_or_file_load='`|%x|\b(IO\.|File\.|Open3|Kernel\.|Process\.|system|exec|s
 # stops the JSON API download that brew otherwise makes on a cold HOME cache,
 # and HOMEBREW_CACHE outside HOME keeps brew's bootsnap cache out of the sandbox.
 # env -i so the caller's HOMEBREW_* settings cannot change the result.
-# With no argument HOMEBREW_PROFILE_INSTALL_PROFILES is left unset.
 brew_bundle_list() {
-  local -a profiles_env=()
-  (( $# )) && profiles_env=("HOMEBREW_PROFILE_INSTALL_PROFILES=$1")
+  local brewfile="$1"
   local cache_dir="$(mktemp -d "${TMPDIR:-/tmp}/brewfile_test_cache.XXXXXX")"
   env -i HOME="$HOME" PATH="${brew_bin:h}:/usr/bin:/bin" TERM=dumb \
     HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ANALYTICS=1 HOMEBREW_NO_ENV_HINTS=1 \
     HOMEBREW_NO_INSTALL_FROM_API=1 HOMEBREW_CACHE="$cache_dir" \
-    "${profiles_env[@]}" \
     "$brew_bin" bundle list --all --file "$brewfile" </dev/null 2>&1
   local exit_code="$?"
   rm -rf "$cache_dir"
   return "$exit_code"
 }
 
-# Quoted strings and comments are removed first, so package names such as
-# "gnu-time" and prose in comments cannot match the Ruby patterns.
-strip_strings_and_comments() {
-  sed -E -e 's/"([^"\\]|\\.)*"/""/g' -e "s/'([^'\\\\]|\\\\.)*'/''/g" -e 's/(^|[[:space:]])#.*$//'
+# Prints `<keyword> "<name>"` for each entry line of <file> other than a tap.
+package_entries_of() {
+  sed -nE "s/^[[:space:]]*(${entry_keywords})[[:space:]]+(\"[^\"]*\").*$/\\1 \\2/p" "$1" | grep -v '^tap ' || true
 }
 
-# Prints the lines of the Brewfile outside any `if ... end` block that match <pattern>.
-top_level_lines() {
-  awk -v pattern="$1" '
-    /^[[:space:]]*(if|unless)[[:space:]]/ { depth++; next }
-    /^[[:space:]]*end([[:space:]]|$)/ { depth--; next }
-    depth == 0 && $0 ~ pattern { print NR ": " $0 }
-  '
-}
-
-assert_has_entry() {
-  assert_contains $'\n'"$1"$'\n' $'\n'"$2"$'\n'
-}
-
-assert_lacks_entry() {
-  assert_not_contains $'\n'"$1"$'\n' $'\n'"$2"$'\n'
+assert_lacks_listed() {
+  local output="$1" entry
+  for entry in ${=never_listed}; do
+    assert_not_contains $'\n'"$output"$'\n' $'\n'"$entry"$'\n'
+  done
+  assert_empty "$(print -r -- "$output" | grep -E '^(python|openjdk)@' || true)"
 }
 
 # Reads files only, so it runs without brew (e.g. on Linux CI).
 function test_brewfile_layout() {
   test_case_title
 
-  local -a brew_dir_files=("$profile_home"/brew/*(DN:t))
-  assert_equal "${(j: :)brew_dir_files}" "Brewfile"
+  local -a brew_dir_entries=("$brew_dir"/*(DN:t))
+  assert_equal "${(j: :)brew_dir_entries}" "addons tiers"
 
-  local known
-  known="$(known_profiles_of "$brewfile")"
-  assert_equal "$?" "0"
-  local -a known_profiles=(${=known})
-  local -a block_names=(
-    ${(f)"$(grep -E '^[[:space:]]*if profiles\.include\?\("[^"]*"\)[[:space:]]*$' "$brewfile" | sed -E 's/^[[:space:]]*if profiles\.include\?\("(.*)"\)[[:space:]]*$/\1/')"}
-  )
-  assert_not_empty "${block_names[*]}"
-  print -r -- "check: every block is a known profile, and every known profile has one block"
-  assert_empty "${(@)block_names:|known_profiles}"
-  assert_empty "${(@)known_profiles:|block_names}"
-  assert_empty "$(print -rl -- "${block_names[@]}" | sort | uniq -d)"
+  print -r -- "check: each directory holds only its kind of Brewfile"
+  local -a tier_entries=("$brew_dir"/tiers/*(DN:t)) addon_entries=("$brew_dir"/addons/*(DN:t))
+  assert_not_empty "${tier_entries[*]}"
+  assert_not_empty "${addon_entries[*]}"
+  assert_empty "$(print -rl -- "${tier_entries[@]}" | grep -vE '^[1-9][0-9]*-[a-z][a-z.]*\.Brewfile$' || true)"
+  assert_empty "$(print -rl -- "${addon_entries[@]}" | grep -vE '^[a-z][a-z.]*\.Brewfile$' || true)"
+  assert_empty "$(print -rl -- "${tier_entries[@]%%-*}" | sort | uniq -d)"
 
-  print -r -- "check: every entry is inside a profile block"
-  assert_empty "$(strip_strings_and_comments <"$brewfile" | top_level_lines "^[[:space:]]*($entry_keywords)[[:space:]]")"
-  assert_match "$(top_level_lines '^[[:space:]]*tap[[:space:]]+"sha1n/tap"' <"$brewfile")" \
-    '^[0-9]+: [[:space:]]*tap "sha1n/tap", trusted: true[[:space:]]*$'
+  print -r -- "check: tier and add-on names are unique"
+  local file
+  local -a names=()
+  for file in ${(f)"$(all_files)"}; do
+    names+=("$(profile_name_of "$file")")
+  done
+  assert_empty "$(print -rl -- "${names[@]}" | sort | uniq -d)"
 }
 
-# Reads files only, so it runs without brew (e.g. on Linux CI).
-function test_no_process_or_file_load() {
-  test_case_title
-
-  assert_empty "$(strip_strings_and_comments <"$brewfile" | grep -nE "$process_or_file_load" || true)"
-
-  print -r -- "check: the pattern ignores DSL lines whose strings name a keyword"
-  local dsl_sample=$'brew "gnu-time"\ncask "load-exec-system"\ntap "sha1n/tap", trusted: true\nuv "poetry"\nprofiles = ENV.fetch("HOMEBREW_PROFILE_INSTALL_PROFILES", "").split'
-  assert_empty "$(print -r -- "$dsl_sample" | strip_strings_and_comments | grep -nE "$process_or_file_load" || true)"
-}
-
-# Reads files only, so it runs without brew (e.g. on Linux CI).
+# The order of the tier numbers is the chain: a tier applies every tier before it.
+# Add-ons stand outside the chain: each applies only itself.
 function test_profile_chain() {
   test_case_title
 
-  # The order of `known` is the chain: a profile applies every profile before it.
-  assert_equal "$(known_profiles_of "$brewfile")" "essentials dev workstation"
+  local file
+  local -a tiers=() addons=()
+  for file in ${(f)"$(tier_files_of "$brew_dir")"}; do
+    tiers+=("$(profile_name_of "$file")")
+  done
+  for file in ${(f)"$(addon_files_of "$brew_dir")"}; do
+    addons+=("$(profile_name_of "$file")")
+  done
+  assert_equal "${(j: :)tiers}" "essentials dev dev.home"
+  assert_equal "${(j: :)addons}" "audio"
 }
 
-# Each profile applies the profiles before it in the chain. Work-only apps and the
-# language runtimes (mise owns them) are listed by no profile. Neovim is in
-# essentials; its toolchain belongs to dev, whose profile install runs plugin sync.
-function test_profile_selection() {
+# Each file is a plain list that Homebrew reads as is, so it holds no other Ruby. It ends
+# with a line break, because profile install hands brew the files joined end to end.
+function test_brewfile_lines() {
   test_case_title
 
-  local essentials='starship coreutils gnu-time rsync watch wget tree bat sha1n/tap/bert fzf jq ripgrep yq poppler neovim git gh sublime-text brave-browser claude codex'
-  local dev='mise uv make go-task shellcheck openspec gopls basedpyright typescript lua-language-server stylua tree-sitter-cli antigravity-cli cmux acdc-mcp repulse'
-  local workstation='llvm goreleaser git-lfs git-filter-repo gnupg docker-desktop visual-studio-code orca'
-  local row value expected_rc present absent output exit_code entry
-  # <HOMEBREW_PROFILE_INSTALL_PROFILES, or <unset>>|<exit code>|<present entries or text>|<absent entries>
-  for row in "<unset>|0|$essentials $dev $workstation|" \
-    "|0|$essentials $dev $workstation|" \
-    "essentials|0|$essentials|$dev $workstation" \
-    "dev|0|$essentials $dev|$workstation" \
-    "workstation|0|$essentials $dev $workstation|" \
-    "essentials workstation|0|$essentials $dev $workstation|" \
-    'dev bogus|1|bogus|'; do
-    IFS='|' read -r value expected_rc present absent <<<"$row"
-    if [[ "$value" == "<unset>" ]]; then
-      output="$(brew_bundle_list)"
-    else
-      output="$(brew_bundle_list "$value")"
-    fi
-    exit_code="$?"
+  local file
+  for file in ${(f)"$(all_files)"}; do
+    print -r -- "file: ${file#$profile_home/}"
+    assert_not_empty "$(package_entries_of "$file")"
+    assert_empty "$(grep -nvE "^[[:space:]]*(#.*)?\$|^[[:space:]]*(${entry_keywords})[[:space:]]+\"[^\"#\\\\]+\"(,[[:space:]]*[a-z_]+:[[:space:]]*(true|false|:[a-z_]+|\"[^\"#\\\\]*\"))*[[:space:]]*(#.*)?\$" "$file" || true)"
+    assert_equal "$(tail -c 1 "$file" | od -An -c | tr -d ' ')" '\n'
+  done
+}
 
-    print -r -- "row: HOMEBREW_PROFILE_INSTALL_PROFILES=$value"
-    if (( expected_rc == 0 )); then
-      assert_equal "$exit_code" "0"
-      for entry in ${=present}; do
-        assert_has_entry "$output" "$entry"
-      done
-      for entry in ${=absent} ${=never_listed}; do
-        assert_lacks_entry "$output" "$entry"
-      done
-      assert_equal "$(print -rl -- ${=present} sha1n/tap | LC_ALL=C sort)" \
-        "$(print -r -- "$output" | LC_ALL=C sort)"
-      assert_empty "$(print -r -- "$output" | sort | uniq -d)"
-      assert_empty "$(print -r -- "$output" | grep -E '^(python|openjdk)@' || true)"
+function test_no_duplicate_entries() {
+  test_case_title
+
+  local file
+  assert_empty "$(for file in ${(f)"$(all_files)"}; do package_entries_of "$file"; done | sort | uniq -d)"
+}
+
+# A file that installs from sha1n/tap taps it itself, so that any selection of files
+# taps it; a file that does not, never taps it.
+function test_sha1n_tap() {
+  test_case_title
+
+  local file
+  for file in ${(f)"$(all_files)"}; do
+    print -r -- "file: ${file#$profile_home/}"
+    if grep -qE '^[[:space:]]*[a-z]+[[:space:]]+"sha1n/tap/' "$file"; then
+      assert_equal "$(grep -E 'sha1n/tap"' "$file")" "$sha1n_tap_line"
     else
-      assert_not_equal "$exit_code" "0"
-      assert_contains "$output" "$present"
+      assert_empty "$(grep -E '"sha1n/tap"' "$file" || true)"
     fi
   done
+}
 
-  print -r -- "check: a name with one before it in the chain changes nothing"
-  assert_equal "$(brew_bundle_list 'essentials workstation')" "$(brew_bundle_list workstation)"
+# Hand-installed apps and the language runtimes (mise owns them) are listed by no profile.
+# Neovim is in essentials; its toolchain belongs to dev, whose profile install runs plugin
+# sync.
+function test_package_lists() {
+  test_case_title
+
+  local -A expected=(
+    essentials 'sha1n/tap starship font-jetbrains-mono-nerd-font coreutils gnu-time parallel rsync watch wget tree bat sha1n/tap/bert fzf jq yq ripgrep poppler neovim sublime-text git gh'
+    dev 'sha1n/tap mise uv make go-task shellcheck openspec antigravity-cli acdc-mcp repulse gopls basedpyright typescript lua-language-server stylua tree-sitter-cli'
+    dev.home 'llvm goreleaser git-lfs git-filter-repo gnupg warp docker-desktop visual-studio-code orca'
+    audio 'blackhole-2ch au-lab'
+  )
+  local file name output exit_code
+  assert_not_empty "$(all_files)"
+  for file in ${(f)"$(all_files)"}; do
+    name="$(profile_name_of "$file")"
+    output="$(brew_bundle_list "$file")"
+    exit_code="$?"
+
+    print -r -- "file: ${file#$profile_home/}"
+    assert_equal "$exit_code" "0"
+    assert_equal "$(print -r -- "$output" | LC_ALL=C sort)" \
+      "$(print -rl -- ${=expected[$name]} | LC_ALL=C sort)"
+    assert_empty "$(print -r -- "$output" | sort | uniq -d)"
+    assert_lacks_listed "$output"
+  done
+}
+
+# profile install and cleanup hand brew the files joined end to end, so every file
+# together must evaluate. Each file that installs from sha1n/tap taps it, so the
+# joined list names that tap once per such file.
+function test_concatenation() {
+  test_case_title
+
+  local -a files=(${(f)"$(all_files)"})
+  assert_not_empty "${files[*]}"
+  local output exit_code
+  output="$(brew_bundle_list =(cat "${files[@]}"))"
+  exit_code="$?"
+
+  assert_equal "$exit_code" "0"
+  local file each=""
+  for file in "${files[@]}"; do
+    each+="$(brew_bundle_list "$file")"$'\n'
+  done
+  assert_equal "$(print -r -- "$output" | LC_ALL=C sort)" "$(print -rn -- "$each" | LC_ALL=C sort)"
+  assert_empty "$(print -r -- "$output" | grep -vx 'sha1n/tap' | sort | uniq -d)"
+  assert_lacks_listed "$output"
 }
 
 setup
 run_test test_brewfile_layout
-run_test test_no_process_or_file_load
 run_test test_profile_chain
+run_test test_brewfile_lines
+run_test test_no_duplicate_entries
+run_test test_sha1n_tap
 if [[ -z "$brew_bin" ]]; then
   echo "# brew is not on PATH; skipping Brewfile evaluation cases"
 else
-  run_test test_profile_selection
+  run_test test_package_lists
+  run_test test_concatenation
 fi
 cleanup
 finish_tests

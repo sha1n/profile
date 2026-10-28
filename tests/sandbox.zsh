@@ -36,20 +36,24 @@ reset_home() {
   find "$HOME" -mindepth 1 -maxdepth 1 ! -name "$fingerprint" -exec rm -rf {} +
 }
 
-# Prints the names of the `known` line of <brewfile> on one line, in file order.
-# The Brewfile is the only list of profiles, so tests read it instead of holding a
-# copy that could drift. Same pattern as __profile_cmd_known_profiles in scripts/profile.
-known_profiles_of() {
-  local brewfile="$1" line
-  local known_pattern='^known = %w\[([a-z. ]+)\]$'
-  if [[ -r "$brewfile" ]]; then
-    for line in "${(@f)$(<"$brewfile")}"; do
-      if [[ "$line" =~ $known_pattern ]]; then
-        print -r -- "${(j: :)${=match[1]}}"
-        return 0
-      fi
-    done
-  fi
-  print -r -- "no 'known' profile list in $brewfile" >&2
-  return 1
+# Prints the tier files of <brew_dir>, one per line, in chain order: ascending <N> of
+# tiers/<N>-<name>.Brewfile, compared as numbers. The file names are the only list of
+# profiles, so tests read them instead of holding a copy that could drift.
+tier_files_of() {
+  local -a files=("$1"/tiers/*.Brewfile(Nn))
+  (( ${#files} == 0 )) || print -rl -- "${files[@]}"
+}
+
+# Prints the add-on files of <brew_dir>, one per line, in name order.
+addon_files_of() {
+  local -a files=("$1"/addons/*.Brewfile(N))
+  (( ${#files} == 0 )) || print -rl -- "${files[@]}"
+}
+
+# Prints the profile name of a tier or add-on file: its base name without the
+# .Brewfile suffix and without the <N>- prefix of a tier.
+profile_name_of() {
+  setopt local_options extended_glob
+  local name="${1:t:r}"
+  print -r -- "${name#[0-9]##-}"
 }
