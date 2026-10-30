@@ -133,7 +133,7 @@ function test_package_lists() {
     essentials 'sha1n/tap starship font-jetbrains-mono-nerd-font coreutils gnu-time parallel rsync watch wget tree bat sha1n/tap/bert fzf jq yq ripgrep poppler neovim sublime-text git gh'
     dev 'sha1n/tap mise uv make go-task shellcheck openspec antigravity-cli acdc-mcp repulse gopls basedpyright typescript lua-language-server stylua tree-sitter-cli'
     dev.home 'llvm goreleaser git-lfs git-filter-repo gnupg warp docker-desktop visual-studio-code orca'
-    audio 'blackhole-2ch au-lab'
+    audio 'blackhole-2ch'
   )
   local file name output exit_code
   assert_not_empty "$(all_files)"

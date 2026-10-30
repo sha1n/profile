@@ -67,7 +67,7 @@ curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh |
 | `essentials` | Core CLI tools, GNU `parallel`, the JetBrains Mono Nerd Font, stock Neovim, Sublime Text, Git and gh |
 | `dev` | mise and its Go, Python, Node.js, Java and Maven runtimes, uv, build tools, agent CLI tools and the Neovim toolchain. Includes `essentials` |
 | `dev.home` | Docker Desktop, LLVM, GoReleaser, Warp, VS Code, Orca, and Git maintenance and signing tools (`git-lfs`, `git-filter-repo`, `gnupg`). Includes `dev` |
-| `audio` | BlackHole 2ch and AU Lab. An add-on |
+| `audio` | BlackHole 2ch. An add-on |
 
 There are two kinds of profiles. The tiers form one chain: `essentials` < `dev` < `dev.home`. Each tier includes every tier before it. An add-on such as `audio` stands outside the chain: it applies only itself, so `audio` alone installs no `essentials`. Name it next to a tier to get both, for example `dev audio`. Brave, Claude, Codex, cmux, Slack and Zoom are not in any profile: install them by hand on the machines that need them.
 
