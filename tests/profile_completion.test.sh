@@ -118,36 +118,36 @@ sorted() {
   (( $# )) && print -rl -- "${(@o)@}"
 }
 
-real_list=$'essentials\ndev\ndev.home\naudio\n'
+profile_names=$'essentials\ndev\ntop\naux\n'
 
 function test_registered_for_profile() {
   test_case_title
   reset_home
-  write_profile_stub "$real_list" 0
+  write_profile_stub "$profile_names" 0
   complete_words 2 profile ""
 
   assert_equal "$registered" "_profile"
 }
 
-# The names after install come from `profile list --names` alone: the stub lists no profile
-# that the repo holds under brew/ except these, so a completion that globs brew/ fails.
+# The names after install come from `profile list --names` alone: the stub lists top and
+# aux, which no file under brew/ names, so a completion that globs brew/ fails.
 function test_offered_names() {
   test_case_title
 
   local row line expected
   # <words, with _ for the empty word under the cursor>|<expected names, space separated>
   for row in 'profile _|cleanup install list update' \
-    'profile install _|audio dev dev.home essentials' \
-    'profile install dev _|audio dev.home essentials' \
-    'profile install audio essentials _|dev dev.home' \
-    'profile install essentials dev dev.home audio _|' \
-    'profile install d|audio dev dev.home essentials' \
+    'profile install _|aux dev top essentials' \
+    'profile install dev _|aux top essentials' \
+    'profile install aux essentials _|dev top' \
+    'profile install essentials dev top aux _|' \
+    'profile install d|aux dev top essentials' \
     'profile cleanup _|' 'profile list _|' 'profile update _|'; do
     IFS='|' read -r line expected <<<"$row"
     local -a words=(${=line})
     words=("${(@)words/#%_/}")
     reset_home
-    write_profile_stub "$real_list" 0
+    write_profile_stub "$profile_names" 0
     complete_words ${#words} "${words[@]}"
 
     print -r -- "row: $line"
@@ -176,7 +176,7 @@ function test_no_names_without_profile_list() {
   local row
   for row in failing missing; do
     reset_home
-    write_profile_stub "$real_list" 1
+    write_profile_stub "$profile_names" 1
     [[ "$row" == missing ]] && rm -f "$stub_bin/profile"
     complete_words 3 profile install ""
 

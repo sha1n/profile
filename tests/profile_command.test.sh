@@ -130,12 +130,23 @@ remove_jq() {
   rm -f "$no_jq_path/jq"
 }
 
-# The real Brewfiles, so the scripts read the list of profiles that ships in the repo.
+# Test-only Brewfiles, so that no case depends on the profiles the repo ships. Only
+# essentials (the default of install) and dev (the tier that starts the nvim sync and mise)
+# are names that scripts/profile knows; top and aux stand for any other tier and add-on.
+write_fixture_brewfiles() {
+  local brew="$1"
+  mkdir -p "$brew/tiers" "$brew/addons"
+  print -r -- 'brew "essentials-formula"' >"$brew/tiers/1-essentials.Brewfile"
+  print -r -- 'brew "dev-formula"' >"$brew/tiers/2-dev.Brewfile"
+  print -r -- 'cask "top-cask"' >"$brew/tiers/3-top.Brewfile"
+  print -r -- 'cask "aux-cask"' >"$brew/addons/aux.Brewfile"
+}
+
 prepare_case() {
   reset_home
   mkdir -p "$stub_bin" "$fake_repo/brew"
   cp -R "$profile_home/scripts" "$fake_repo/scripts"
-  cp -R "$profile_home/brew/tiers" "$profile_home/brew/addons" "$fake_repo/brew/"
+  write_fixture_brewfiles "$fake_repo/brew"
 
   local step
   for step in git_pull git_submodule brew_bundle mise nvim brew_dry brew_force brew_list \
@@ -446,7 +457,7 @@ function test_failing_step_stops_the_run() {
   local row failing command steps
   # <stub that fails>|<command>|<steps that ran>
   for row in 'git_pull|update|pull' 'git_submodule|update|pull submodule' \
-    'brew_bundle|install essentials dev|brew' 'nvim|install dev.home|brew nvim' \
+    'brew_bundle|install essentials dev|brew' 'nvim|install top|brew nvim' \
     'nvim|install dev|brew nvim' 'mise|install dev|brew nvim mise'; do
     IFS='|' read -r failing command steps <<<"$row"
     prepare_case
@@ -470,18 +481,18 @@ function test_failing_step_stops_the_run() {
 function test_install_arguments() {
   test_case_title
 
-  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile h=tiers/3-dev.home.Brewfile
-  local a=addons/audio.Brewfile
+  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile h=tiers/3-top.Brewfile
+  local a=addons/aux.Brewfile
   local row args expected_rc steps word expected
   # <arguments>|<exit code>|<steps>|<files under brew/ joined for brew, or the name the error gives>
   for row in "|0|brew|$e" "essentials|0|brew|$e" "dev|0|brew nvim mise|$e $d" \
     "essentials dev|0|brew nvim mise|$e $d" "dev dev|0|brew nvim mise|$e $d" \
-    "dev.home|0|brew nvim mise|$e $d $h" "essentials dev.home|0|brew nvim mise|$e $d $h" \
-    "dev.home essentials dev|0|brew nvim mise|$e $d $h" \
-    "audio|0|brew|$a" "audio audio|0|brew|$a" "essentials audio|0|brew|$e $a" \
-    "dev audio|0|brew nvim mise|$e $d $a" "audio dev|0|brew nvim mise|$e $d $a" \
+    "top|0|brew nvim mise|$e $d $h" "essentials top|0|brew nvim mise|$e $d $h" \
+    "top essentials dev|0|brew nvim mise|$e $d $h" \
+    "aux|0|brew|$a" "aux aux|0|brew|$a" "essentials aux|0|brew|$e $a" \
+    "dev aux|0|brew nvim mise|$e $d $a" "aux dev|0|brew nvim mise|$e $d $a" \
     'workstation|2||workstation' 'bogus|2||bogus' 'essentials bogus|2||bogus' 'base|2||base' \
-    '1-essentials|2||1-essentials' 'audio.Brewfile|2||audio.Brewfile'; do
+    '1-essentials|2||1-essentials' 'aux.Brewfile|2||aux.Brewfile'; do
     IFS='|' read -r args expected_rc steps word <<<"$row"
     prepare_case
     run_profile "$HOME" install ${=args}
@@ -537,7 +548,7 @@ function test_install_finds_mise_from_brew_bundle() {
   assert_equal "$calls" "$(step_calls_of brew nvim mise)"
 }
 
-# dev and dev.home sync the Neovim plugins, after brew bundle, which may have just
+# dev and top sync the Neovim plugins, after brew bundle, which may have just
 # installed nvim; essentials does not (the brew-only rows of test_install_arguments).
 function test_install_syncs_nvim_plugins() {
   test_case_title
@@ -566,7 +577,7 @@ function test_install_missing_tools() {
   for row in 'brew mise|dev|nvim|TITLE brew TITLE nvim TITLE mise' 'brew|essentials||TITLE brew' \
     'mise|dev|brew nvim|TITLE brew TITLE nvim TITLE mise' 'nvim|essentials|brew|TITLE brew' \
     'nvim|dev|brew mise|TITLE brew TITLE nvim TITLE mise' \
-    'nvim|dev.home|brew mise|TITLE brew TITLE nvim TITLE mise' \
+    'nvim|top|brew mise|TITLE brew TITLE nvim TITLE mise' \
     'brew mise nvim|dev||TITLE brew TITLE nvim TITLE mise'; do
     IFS='|' read -r removed args steps expected <<<"$row"
     prepare_case
@@ -605,17 +616,17 @@ function test_install_missing_tools() {
 function test_install_reads_profiles_from_file_names() {
   test_case_title
 
-  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile h=tiers/3-dev.home.Brewfile
-  local a=addons/audio.Brewfile x=addons/extra.Brewfile
+  local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile h=tiers/3-top.Brewfile
+  local a=addons/aux.Brewfile x=addons/extra.Brewfile
   local row change args expected_rc steps word expected
   # <change to brew/>|<arguments>|<exit code>|<steps>|<files under brew/ joined for brew, or the text the error gives>
   for row in "extra-tier|extra|0|brew nvim mise|$e $d $h tiers/4-extra.Brewfile" \
     "renumbered|pre|0|brew|tiers/5-pre.Brewfile" \
     "renumbered|dev|0|brew nvim mise|tiers/5-pre.Brewfile tiers/10-essentials.Brewfile tiers/20-dev.Brewfile" \
     "extra-addon|extra|0|brew|$x" "extra-addon|extra dev|0|brew nvim mise|$e $d $x" \
-    "extra-addon|extra audio|0|brew|$a $x" \
-    "no-addons|dev|0|brew nvim mise|$e $d" 'no-addons|audio|2||audio' \
-    'no-tiers||1||brew/tiers' 'no-tiers|audio|1||brew/tiers' 'empty-tiers||1||brew/tiers'; do
+    "extra-addon|extra aux|0|brew|$a $x" \
+    "no-addons|dev|0|brew nvim mise|$e $d" 'no-addons|aux|2||aux' \
+    'no-tiers||1||brew/tiers' 'no-tiers|aux|1||brew/tiers' 'empty-tiers||1||brew/tiers'; do
     IFS='|' read -r change args expected_rc steps word <<<"$row"
     prepare_case
     case "$change" in
@@ -623,7 +634,7 @@ function test_install_reads_profiles_from_file_names() {
       renumbered)
         mv "$fake_repo/brew/$e" "$fake_repo/brew/tiers/10-essentials.Brewfile"
         mv "$fake_repo/brew/$d" "$fake_repo/brew/tiers/20-dev.Brewfile"
-        mv "$fake_repo/brew/$h" "$fake_repo/brew/tiers/30-dev.home.Brewfile"
+        mv "$fake_repo/brew/$h" "$fake_repo/brew/tiers/30-top.Brewfile"
         print -r -- 'brew "pre-formula"' >"$fake_repo/brew/tiers/5-pre.Brewfile" ;;
       extra-addon) print -r -- 'cask "extra-cask"' >"$fake_repo/brew/$x" ;;
       no-addons) rm -rf "$fake_repo/brew/addons" ;;
@@ -656,7 +667,7 @@ function test_unreadable_profile_file() {
   local e=tiers/1-essentials.Brewfile d=tiers/2-dev.Brewfile
   local row change command expected_rc steps word expected
   # <change to brew/>|<command>|<exit code>|<steps>|<files under brew/ joined for brew>
-  for row in "dev-dir|install dev|1||" "dev-dir|install dev.home|1||" \
+  for row in "dev-dir|install dev|1||" "dev-dir|install top|1||" \
     "dev-dir|install|0|brew|$e" "addon-dir|install broken|1||" \
     "addon-dir|install dev broken|1||" "addon-dir|install dev|0|brew nvim mise|$e $d" \
     "addon-link|install broken|1||" "dev-dir|cleanup|1||" "addon-dir|cleanup|1||" \
@@ -719,7 +730,7 @@ function test_list() {
   test_case_title
 
   local row change args expected_rc tiers addons word expected raw_out
-  # The real repo files, spelled out once so that list_sections cannot hide a format change.
+  # The test-only files, spelled out once so that list_sections cannot hide a format change.
   prepare_case
   run_profile "$HOME" list
   raw_out="$(cat "$stub_dir/out"; print -rn -- .)"
@@ -728,19 +739,19 @@ function test_list() {
   assert_equal "${raw_out%.}" "==> Tiers
 essentials
 dev
-dev.home
+top
 
 ==> Add-ons
-audio
+aux
 "
 
   # <change to brew/>|<arguments after list>|<exit code>|<tiers>|<add-ons>|<text that stderr holds>
-  for row in '||0|essentials dev dev.home|audio|' \
-    '|--names|0|essentials dev dev.home|audio|' \
-    'extra||0|essentials dev dev.home extra|audio bass|' \
-    'extra|--names|0|essentials dev dev.home extra|audio bass|' \
-    'no-addons||0|essentials dev dev.home||' \
-    'no-addons|--names|0|essentials dev dev.home||' \
+  for row in '||0|essentials dev top|aux|' \
+    '|--names|0|essentials dev top|aux|' \
+    'extra||0|essentials dev top extra|aux bass|' \
+    'extra|--names|0|essentials dev top extra|aux bass|' \
+    'no-addons||0|essentials dev top||' \
+    'no-addons|--names|0|essentials dev top||' \
     'no-tiers||1|||brew/tiers' 'no-tiers|--names|1|||brew/tiers' \
     'empty-tiers||1|||brew/tiers' 'empty-tiers|--names|1|||brew/tiers' \
     '|dev|2|||profile list [--names]' '|--all|2|||profile list [--names]' \
@@ -824,11 +835,11 @@ function test_list_on_terminal() {
     collect_and_reset
 
     if [[ "$args" == --names ]]; then
-      expected="$(print -rl -- essentials dev dev.home audio)"$'\n'
+      expected="$(print -rl -- essentials dev top aux)"$'\n'
     elif [[ "$change" == no-addons ]]; then
-      expected="$(list_sections "essentials dev dev.home" "" "$color")"$'\n'
+      expected="$(list_sections "essentials dev top" "" "$color")"$'\n'
     else
-      expected="$(list_sections "essentials dev dev.home" "audio" "$color")"$'\n'
+      expected="$(list_sections "essentials dev top" "aux" "$color")"$'\n'
     fi
     print -r -- "row: $change, NO_COLOR=$no_color, profile list $args"
     assert_equal "$rc" "0"
