@@ -22,15 +22,25 @@ table_entries() {
   ' "$1" 2>/dev/null | sort
 }
 
+# Checks the rules of the config, not which runtimes it pins, so that adding or removing
+# a runtime needs no test change.
 function test_repo_config() {
   test_case_title
 
   assert_equal "$(cd "$repo_mise_dir" && find . -mindepth 1 | sort | tr '\n' ' ')" "./profile.toml "
-  assert_equal "$(table_entries "$repo_config" settings | tr '\n' ' ')" "idiomatic_version_file_enable_tools=[node,python] "
   local entries="$(table_entries "$repo_config" tools)"
-  assert_equal "$(print -r -- "$entries" | cut -d= -f1 | tr '\n' ' ')" "go java maven node python "
+  assert_not_empty "$entries"
   print -r -- "check: every [tools] value is a major or major.minor line"
   assert_empty "$(print -r -- "$entries" | grep -Ev '^[^=]+=[0-9]+(\.[0-9]+)?$')"
+
+  print -r -- "check: every tool that reads idiomatic version files is pinned in [tools]"
+  local idiomatic="$(table_entries "$repo_config" settings | sed -n 's/^idiomatic_version_file_enable_tools=\[\(.*\)\]$/\1/p')"
+  local -a tools=(${(f)"$(print -r -- "$entries" | cut -d= -f1)"}) unpinned=()
+  local tool
+  for tool in ${(s:,:)idiomatic}; do
+    (( ${tools[(Ie)$tool]} )) || unpinned+=("$tool")
+  done
+  assert_empty "${unpinned[*]}"
 }
 
 function test_first_and_second_run_link_config() {
