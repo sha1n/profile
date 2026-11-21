@@ -57,6 +57,7 @@ function test_agents_global_linked() {
   # fresh install (empty sandbox HOME) symlinks ~/.claude/CLAUDE.md to the profile
   assert_equal "$(readlink "$HOME/.claude/CLAUDE.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
   assert_equal "$(readlink "$HOME/.codex/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
+  assert_equal "$(readlink "$HOME/.pi/agent/AGENTS.md")" "$SHA1N_PROFILE_HOME/agents/AGENTS.md"
 }
 
 function test_agents_global_idempotent() {

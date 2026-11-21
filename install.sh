@@ -6,7 +6,7 @@ source "$SHA1N_PROFILE_HOME/include/exports"
 
 __profile_install_dotzshrc="$HOME/.zshrc"
 __profile_install_dotzprofile="$HOME/.zprofile"
-__profile_install_agent_global_configs=("$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md")
+__profile_install_agent_global_configs=("$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md" "$HOME/.pi/agent/AGENTS.md")
 __profile_install_dotfiles_dir="$SHA1N_PROFILE_HOME/dotfiles"
 __profile_install_dirs=("$HOME/.local/bin" "$CODE/w")
 

@@ -114,14 +114,14 @@ function test_declined_prompts_exit_0() {
   test_case_title
   reset_home
 
-  local -a targets=("$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md")
+  local -a targets=("$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md" "$HOME/.codex/AGENTS.md" "$HOME/.pi/agent/AGENTS.md")
   local target
   for target in "${targets[@]}"; do
     mkdir -p "${target:h}"
     print -n "MINE" >"$target"
   done
 
-  print -n 'n\nn\nn\n' | env -i HOME="$HOME" PATH="$PATH" TERM=dumb zsh "$install_script" >/dev/null 2>&1
+  print -n 'n\nn\nn\nn\n' | env -i HOME="$HOME" PATH="$PATH" TERM=dumb zsh "$install_script" >/dev/null 2>&1
   local rc=$?
 
   assert_equal "$rc" "0"
