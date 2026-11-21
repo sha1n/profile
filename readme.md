@@ -43,7 +43,7 @@ The installation script runs these steps, each under a section title:
 5. Adds `source '<repo>/load.zsh'` to `~/.zshrc`.
    - If the file doesn't exist, it creates it
    - If `~/.zshrc` already sources a `load.zsh`, skips it
-6. Links `agents/AGENTS.md` to `~/.agents/AGENTS.md`, `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`.
+6. Links `agents/AGENTS.md` to `~/.agents/AGENTS.md`, `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` and `~/.pi/agent/AGENTS.md`.
    - If a target already exists, asks `[n/Y]` before it replaces it. Default is Yes
 7. Links the `config/nvim` directory to `~/.config/nvim`.
    - If `~/.config/nvim` is a directory of the old layout, whose `init.lua` links into this repository, moves it to `~/.config/nvim.bak.<epoch seconds>` first
