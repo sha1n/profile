@@ -96,6 +96,13 @@ function __profile_install_link_file() {
   fi
 }
 
+function __profile_install_pi_footer() {
+  local src="$SHA1N_PROFILE_HOME/agents/pi/colored-footer.ts"
+  local dst="$HOME/.pi/agent/extensions/colored-footer.ts"
+  __profile_install_create_directory "${dst:h}" || return 1
+  __profile_install_link_file "$src" "$dst"
+}
+
 function __profile_install_link_dotfiles() {
   local file failed=0
 
@@ -247,6 +254,7 @@ __profile_install_run_step "Directories" __profile_install_create_directories
 __profile_install_run_step "Homebrew shellenv (~/.zprofile)" __profile_install_brew_shellenv
 __profile_install_run_step "Shell rc (~/.zshrc)" __profile_install_shell_rc
 __profile_install_run_step "Agent instructions" __profile_install_agents_global
+__profile_install_run_step "Pi footer" __profile_install_pi_footer
 __profile_install_run_step "Neovim" __profile_install_setup_neovim
 __profile_install_run_step "mise config" __profile_install_link_mise_config
 __profile_install_run_step "Bytecode" __profile_install_compile_bytecode
