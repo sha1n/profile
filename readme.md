@@ -60,7 +60,7 @@ The script installs no tools. Use `profile install` for that (see [Update](#upda
 One command sets up a new Mac. It installs Homebrew, clones this repository to `~/code/profile`, runs `install.sh`, and runs `profile install` with the profiles that you name (default: `essentials`). It is macOS only and exits on other platforms. It can ask for your `sudo` password for the Homebrew installer. You can run it again: it skips an installed Homebrew and an existing clone.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sha1n/profile/master/bootstrap.sh | zsh -s -- dev
+curl -fsSL https://raw.githubusercontent.com/sha1n/profile/HEAD/bootstrap.sh | zsh -s -- dev
 ```
 
 | Profile | Contents |
