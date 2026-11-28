@@ -43,14 +43,6 @@ function test_dir_path_elements() {
   assert_contains "$PATH" "$SHA1N_PROFILE_HOME/scripts"
 }
 
-function test_pi_footer_linked() {
-  test_case_title
-
-  local footer="$HOME/.pi/agent/extensions/colored-footer.ts"
-  assert_file_exists "$footer"
-  assert_equal "$(readlink "$footer")" "$SHA1N_PROFILE_HOME/agents/pi/colored-footer.ts"
-}
-
 function test_agents_global_linked() {
   test_case_title
 
@@ -121,7 +113,6 @@ run_test test_locale_set
 run_test test_env_vars
 run_test test_dir_layout
 run_test test_dir_path_elements
-run_test test_pi_footer_linked
 run_test test_agents_global_linked
 run_test test_agents_global_idempotent
 run_test test_agents_global_keep_existing
