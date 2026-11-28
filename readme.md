@@ -49,8 +49,7 @@ The installation script runs these steps, each under a section title:
    - If `~/.config/nvim` is a directory of the old layout, whose `init.lua` links into this repository, moves it to `~/.config/nvim.bak.<epoch seconds>` first
    - If anything else is at `~/.config/nvim`, prints a warning and skips it
 8. Links `config/mise/profile.toml` to `~/.config/mise/conf.d/profile.toml`.
-9. Links [the Pi footer](agents/pi/colored-footer.ts) to `~/.pi/agent/extensions/colored-footer.ts`, leaving existing files and other extensions alone. Run `/reload` in an open Pi session to pick up changes. The footer uses the Claude status line’s model palette and context thresholds (yellow at 20%, orange at 30%, red at 50%).
-10. Compiles the zsh files to `.zwc` bytecode.
+9. Compiles the zsh files to `.zwc` bytecode.
 
 The script runs every step, even after one fails. An existing target is a skip, not a failure. At the end it exits with 1 and names the failed steps, or with 0.
 
